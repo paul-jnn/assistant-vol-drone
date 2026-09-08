@@ -1,13 +1,23 @@
 use tauri::Manager;
 
-/// Chemin du fichier stockant l'empreinte du code PIN (dans le dossier de config de l'app).
-fn pin_file(app: &tauri::AppHandle) -> std::path::PathBuf {
+/// Dossier de configuration de l'application (créé si absent).
+fn config_dir(app: &tauri::AppHandle) -> std::path::PathBuf {
     let dir = app
         .path()
         .app_config_dir()
         .expect("dossier de configuration introuvable");
     std::fs::create_dir_all(&dir).ok();
-    dir.join("pin.hash")
+    dir
+}
+
+/// Fichier stockant l'empreinte du code PIN.
+fn pin_file(app: &tauri::AppHandle) -> std::path::PathBuf {
+    config_dir(app).join("pin.hash")
+}
+
+/// Fichier de données de l'application (référentiel, dossiers, etc.).
+fn data_file(app: &tauri::AppHandle) -> std::path::PathBuf {
+    config_dir(app).join("donnees.json")
 }
 
 /// Empreinte SHA-256 du PIN, avec un sel fixe (suffisant pour un verrou local mono-poste).
@@ -43,10 +53,29 @@ fn verify_pin(app: tauri::AppHandle, pin: String) -> bool {
     }
 }
 
+/// Lit l'ensemble des données applicatives (JSON brut). Renvoie "{}" si aucun fichier.
+#[tauri::command]
+fn data_get(app: tauri::AppHandle) -> String {
+    std::fs::read_to_string(data_file(&app)).unwrap_or_else(|_| "{}".to_string())
+}
+
+/// Écrit l'ensemble des données applicatives (JSON brut), de façon atomique.
+#[tauri::command]
+fn data_set(app: tauri::AppHandle, json: String) -> Result<(), String> {
+    // Validation minimale : le contenu doit être un JSON valide.
+    serde_json::from_str::<serde_json::Value>(&json).map_err(|e| format!("JSON invalide : {e}"))?;
+    let path = data_file(&app);
+    let tmp = path.with_extension("json.tmp");
+    std::fs::write(&tmp, json.as_bytes()).map_err(|e| e.to_string())?;
+    std::fs::rename(&tmp, &path).map_err(|e| e.to_string())
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
-        .invoke_handler(tauri::generate_handler![pin_status, set_pin, verify_pin])
+        .invoke_handler(tauri::generate_handler![
+            pin_status, set_pin, verify_pin, data_get, data_set
+        ])
         .run(tauri::generate_context!())
         .expect("erreur au lancement de l'application Tauri");
 }

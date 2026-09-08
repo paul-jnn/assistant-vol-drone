@@ -5,93 +5,400 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Assistant Vol Drone</title>
 <style>
-  :root{--bleu:#1a3c6e;--bleu2:#2b6cb0;--bleu-clair:#e8f0fb;--bord:#d9e0ea;--gris:#5a6472;--texte:#1f2733;--vert:#2f855a;--rouge:#c53030}
+  :root{
+    --bleu:#1a3c6e;--bleu2:#2b6cb0;--bleu3:#3b82c4;--bleu-clair:#e8f0fb;
+    --bord:#d9e0ea;--gris:#5a6472;--gris2:#8592a3;--texte:#1f2733;
+    --vert:#2f855a;--vert-clair:#e6f4ec;--rouge:#c53030;--fond:#f4f7fb;--blanc:#fff;
+  }
   *{box-sizing:border-box}
   html,body{margin:0;height:100%}
-  body{font-family:"Segoe UI",Roboto,system-ui,Arial,sans-serif;color:var(--texte);background:var(--bleu);display:flex;align-items:center;justify-content:center;height:100vh}
-  .card{background:#fff;border-radius:16px;box-shadow:0 10px 40px rgba(0,0,0,.25);padding:34px 38px;width:360px;text-align:center}
-  .logo{width:64px;height:64px;border-radius:16px;background:var(--bleu);color:#fff;font-size:30px;display:flex;align-items:center;justify-content:center;margin:0 auto 16px}
-  h1{color:var(--bleu);font-size:20px;margin:0 0 4px}
-  p{color:var(--gris);font-size:13.5px;margin:4px 0 18px}
-  input{width:100%;padding:12px 14px;border:1px solid var(--bord);border-radius:10px;font-size:20px;text-align:center;letter-spacing:8px}
-  input:focus{outline:none;border-color:var(--bleu2);box-shadow:0 0 0 3px rgba(43,108,176,.15)}
-  button{width:100%;margin-top:14px;padding:12px;border:none;border-radius:10px;background:var(--bleu2);color:#fff;font-size:15px;font-weight:600;cursor:pointer}
-  button:hover{background:var(--bleu)}
-  .msg{min-height:18px;font-size:13px;margin-top:10px}
-  .msg.err{color:var(--rouge)}
-  .msg.ok{color:var(--vert)}
-  .home{width:100%;max-width:760px;padding:0 24px}
-  .home h1{font-size:24px}
-  .badge{display:inline-block;background:var(--bleu-clair);color:var(--bleu);border-radius:20px;padding:4px 12px;font-size:12px;font-weight:700;margin-bottom:12px}
-  .hidden{display:none!important}
+  body{font-family:"Segoe UI",Roboto,system-ui,Arial,sans-serif;color:var(--texte);background:var(--fond)}
+  button{font-family:inherit;cursor:pointer}
+
+  /* ---------- Verrou PIN ---------- */
+  #lock{position:fixed;inset:0;background:var(--bleu);display:flex;align-items:center;justify-content:center;z-index:50}
+  #lock .card{background:#fff;border-radius:16px;box-shadow:0 10px 40px rgba(0,0,0,.25);padding:34px 38px;width:360px;text-align:center}
+  #lock .logo{width:64px;height:64px;border-radius:16px;background:var(--bleu);color:#fff;font-size:30px;display:flex;align-items:center;justify-content:center;margin:0 auto 16px}
+  #lock h1{color:var(--bleu);font-size:20px;margin:0 0 4px}
+  #lock p{color:var(--gris);font-size:13.5px;margin:4px 0 18px}
+  #lock input{width:100%;padding:12px 14px;border:1px solid var(--bord);border-radius:10px;font-size:20px;text-align:center;letter-spacing:8px;margin-bottom:8px}
+  #lock input:focus{outline:none;border-color:var(--bleu2);box-shadow:0 0 0 3px rgba(43,108,176,.15)}
+  #lock button{width:100%;margin-top:6px;padding:12px;border:none;border-radius:10px;background:var(--bleu2);color:#fff;font-size:15px;font-weight:600}
+  #lock button:hover{background:var(--bleu)}
+  .msg{min-height:18px;font-size:13px;margin-top:8px}
+  .msg.err{color:var(--rouge)}.msg.ok{color:var(--vert)}
+
+  /* ---------- Coque ---------- */
+  #app{display:none;grid-template-columns:230px 1fr;grid-template-rows:56px 1fr;height:100vh}
+  #app.show{display:grid}
+  .topbar{grid-column:1/3;background:var(--bleu);color:#fff;display:flex;align-items:center;gap:12px;padding:0 18px}
+  .topbar .brand{display:flex;align-items:center;gap:10px;font-weight:700;font-size:15px}
+  .topbar .brand .ic{width:32px;height:32px;border-radius:8px;background:rgba(255,255,255,.15);display:flex;align-items:center;justify-content:center;font-size:18px}
+  .topbar .spacer{flex:1}
+  .topbar .save-state{font-size:12px;color:#bcd3f0;min-width:120px;text-align:right}
+  .topbar button{background:rgba(255,255,255,.12);color:#fff;border:none;border-radius:8px;padding:7px 12px;font-size:13px}
+  .topbar button:hover{background:rgba(255,255,255,.22)}
+
+  .side{background:#12315c;padding:12px 10px;overflow:auto}
+  .side .grp{color:#7fa3d0;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;margin:14px 8px 6px}
+  .side a{display:flex;align-items:center;gap:9px;color:#d6e2f4;text-decoration:none;padding:9px 11px;border-radius:9px;font-size:14px;margin-bottom:2px}
+  .side a .ic{width:18px;text-align:center}
+  .side a:hover{background:rgba(255,255,255,.08)}
+  .side a.active{background:var(--bleu2);color:#fff;font-weight:600}
+  .side a.soon{color:#6f8bb3}
+  .side a .tag{margin-left:auto;font-size:10px;background:rgba(255,255,255,.12);padding:1px 6px;border-radius:8px;color:#a9c1e2}
+
+  .main{overflow:auto;padding:24px 30px}
+  .page-h{margin:0 0 4px;color:var(--bleu);font-size:22px}
+  .page-sub{color:var(--gris);font-size:13.5px;margin:0 0 20px}
+
+  .card{background:#fff;border:1px solid var(--bord);border-radius:14px;padding:20px 22px;margin-bottom:18px;box-shadow:0 1px 3px rgba(20,40,70,.04)}
+  .card > h2{margin:0 0 2px;font-size:16px;color:var(--bleu)}
+  .card > .kick{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--bleu2);margin-bottom:2px}
+  .card > .desc{color:var(--gris);font-size:13px;margin:0 0 16px}
+
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:12px 16px}
+  .field{display:flex;flex-direction:column;gap:4px}
+  .field.full{grid-column:1/3}
+  .field label{font-size:12px;color:var(--gris);font-weight:600}
+  .field input,.field textarea{padding:9px 11px;border:1px solid var(--bord);border-radius:9px;font-size:14px;font-family:inherit;color:var(--texte);background:#fff}
+  .field input:focus,.field textarea:focus{outline:none;border-color:var(--bleu2);box-shadow:0 0 0 3px rgba(43,108,176,.12)}
+  .field textarea{resize:vertical;min-height:44px}
+
+  .btn{border:1px solid var(--bord);background:#fff;color:var(--texte);border-radius:9px;padding:8px 13px;font-size:13.5px;font-weight:600}
+  .btn:hover{background:var(--fond)}
+  .btn.primary{background:var(--bleu2);border-color:var(--bleu2);color:#fff}
+  .btn.primary:hover{background:var(--bleu)}
+  .btn.danger{background:#fff;border-color:#f0c3c3;color:var(--rouge)}
+  .btn.danger:hover{background:#fdecec}
+  .btn.sm{padding:5px 9px;font-size:12.5px}
+  .row-actions{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px}
+
+  .pilote{border:1px solid var(--bord);border-radius:12px;padding:16px 18px;margin-bottom:14px}
+  .pilote .head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px}
+  .pilote .head h3{margin:0;font-size:15px;color:var(--bleu)}
+  .refbox{display:flex;align-items:center;gap:6px;font-size:12.5px;color:var(--gris);border:1px solid var(--bord);border-radius:20px;padding:4px 11px}
+  .refbox.sel{background:var(--vert-clair);border-color:#bfe3cd;color:var(--vert);font-weight:600}
+  .note{background:#f0f5fc;border:1px solid #dce7f5;border-radius:10px;padding:12px 14px;font-size:13px;color:var(--gris);margin-bottom:12px}
+  .soon-page{background:#fff;border:1px dashed var(--bord);border-radius:14px;padding:40px;text-align:center;color:var(--gris)}
+  .soon-page .big{font-size:40px;margin-bottom:8px}
+  .linklist{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .linklist a{display:flex;align-items:center;gap:10px;text-decoration:none;color:var(--texte);border:1px solid var(--bord);border-radius:10px;padding:11px 13px;font-size:13.5px}
+  .linklist a:hover{border-color:var(--bleu2);background:#f7faff}
+  .linklist a .ic{font-size:17px}
+  .linklist a small{display:block;color:var(--gris);font-size:11.5px}
+  @media(max-width:820px){.grid,.linklist{grid-template-columns:1fr}.field.full{grid-column:1}}
 </style>
 </head>
 <body>
 
-<!-- Écran verrou PIN -->
-<div id="lock" class="card">
-  <div class="logo">🛩</div>
-  <h1 id="lockTitle">Assistant Vol Drone</h1>
-  <p id="lockText">Chargement…</p>
-  <input id="pin" type="password" inputmode="numeric" maxlength="8" autocomplete="off" placeholder="••••">
-  <input id="pin2" type="password" inputmode="numeric" maxlength="8" autocomplete="off" placeholder="Confirmer" class="hidden">
-  <button id="btn">Valider</button>
-  <div id="msg" class="msg"></div>
+<!-- ============ VERROU PIN ============ -->
+<div id="lock">
+  <div class="card">
+    <div class="logo">🛩</div>
+    <h1 id="lockTitle">Assistant Vol Drone</h1>
+    <p id="lockText">Chargement…</p>
+    <input id="pin" type="password" inputmode="numeric" maxlength="8" autocomplete="off" placeholder="••••">
+    <input id="pin2" type="password" inputmode="numeric" maxlength="8" autocomplete="off" placeholder="Confirmer" style="display:none">
+    <button id="btnPin">Valider</button>
+    <div id="pinMsg" class="msg"></div>
+  </div>
 </div>
 
-<!-- Écran principal (placeholder milestone 1) -->
-<div id="app" class="home hidden" style="text-align:center;color:#fff">
-  <div class="badge">Version desktop · squelette</div>
-  <h1>Bienvenue 👋</h1>
-  <p style="color:#cdddf5">Le verrou PIN fonctionne et la coque Rust/Tauri tourne. La reprise complète de l'interface SORA (référentiel, dossiers, Cerfa, dérogation, AOT…) arrive dans les prochaines itérations.</p>
-  <button id="lockBtn" style="max-width:200px;margin:16px auto 0;background:rgba(255,255,255,.15)">Verrouiller</button>
+<!-- ============ APPLICATION ============ -->
+<div id="app">
+  <div class="topbar">
+    <div class="brand"><span class="ic">🛩</span> Assistant Vol Drone</div>
+    <div class="spacer"></div>
+    <div class="save-state" id="saveState"></div>
+    <button id="btnLock">🔒 Verrouiller</button>
+  </div>
+
+  <nav class="side" id="side"></nav>
+
+  <main class="main" id="view"></main>
 </div>
 
 <script>
-  const invoke = window.__TAURI__.core.invoke;
-  const lock=document.getElementById('lock'), appEl=document.getElementById('app');
-  const title=document.getElementById('lockTitle'), text=document.getElementById('lockText');
-  const pin=document.getElementById('pin'), pin2=document.getElementById('pin2');
-  const btn=document.getElementById('btn'), msg=document.getElementById('msg');
-  let mode='enter';
+"use strict";
+const invoke = window.__TAURI__.core.invoke;
 
-  function setMsg(t,cls){msg.textContent=t;msg.className='msg '+(cls||'');}
-  function showApp(){lock.classList.add('hidden');appEl.classList.remove('hidden');}
-  function showLock(){appEl.classList.add('hidden');lock.classList.remove('hidden');pin.value='';pin2.value='';pin.focus();}
+/* =========================================================
+   DONNÉES
+   ========================================================= */
+function emptyStore(){
+  return {
+    exploitant:{raison:'',forme:'',siret:'',numUAS:'',responsable:'',adresse:'',cp:'',ville:'',tel:'',mail:'',assureur:'',police:'',notes:''},
+    pilotes:[],
+    referent:''
+  };
+}
+function seededStore(){
+  const s=emptyStore();
+  s.exploitant={
+    raison:'M.G.I. — Maintenance Générale Industrielle',forme:'EURL',
+    siret:'98151498700024',numUAS:'UAS-FR-368093',
+    responsable:'Paul JEANNIN-GIRARDON',adresse:'12 Le Pinier',
+    cp:'85250',ville:'Vendrennes',tel:'0788372276',mail:'contact@mgi-vendee.fr',
+    assureur:'',police:'',notes:'TVA FR72981514987 · APE 33.12Z · SIREN 981514987'
+  };
+  return s;
+}
+function normalize(raw){
+  const s=Object.assign(emptyStore(),raw||{});
+  s.exploitant=Object.assign(emptyStore().exploitant,raw&&raw.exploitant||{});
+  if(!Array.isArray(s.pilotes))s.pilotes=[];
+  s.pilotes=s.pilotes.map(p=>Object.assign(
+    {id:'p'+Math.random().toString(36).slice(2),prenom:'',nom:'',tel:'',mail:'',numTele:'',brevets:'',mentions:'',habilitations:'',notes:''},p));
+  if(s.referent && !s.pilotes.some(p=>p.id===s.referent))s.referent=s.pilotes[0]?s.pilotes[0].id:'';
+  return s;
+}
 
-  async function boot(){
-    const has = await invoke('pin_status');
-    mode = has ? 'enter' : 'create';
-    if(mode==='create'){
-      title.textContent='Créer un code PIN';
-      text.textContent='Choisissez un code (au moins 4 chiffres) pour protéger l\'accès à vos données sur ce poste.';
-      pin.placeholder='Nouveau code'; pin2.classList.remove('hidden');
-    } else {
-      title.textContent='Assistant Vol Drone';
-      text.textContent='Entrez votre code PIN.';
-    }
-    pin.focus();
+let store=emptyStore();
+let saveTimer=null;
+
+async function loadStore(){
+  let raw={};
+  try{ raw=JSON.parse(await invoke('data_get')||'{}'); }catch(e){ raw={}; }
+  const empty=!raw || (!raw.exploitant && (!raw.pilotes||!raw.pilotes.length));
+  store = empty ? seededStore() : normalize(raw);
+  if(empty){ await persist(true); }
+}
+async function persist(silent){
+  try{
+    await invoke('data_set',{json:JSON.stringify(store)});
+    if(!silent) setSaved('Enregistré ✓');
+  }catch(e){ setSaved('Erreur d\'enregistrement',true); }
+}
+function scheduleSave(){
+  setSaved('Modification…');
+  clearTimeout(saveTimer);
+  saveTimer=setTimeout(()=>persist(false),450);
+}
+function setSaved(t,err){
+  const el=document.getElementById('saveState');
+  el.textContent=t; el.style.color=err?'#f6b0b0':'#bcd3f0';
+}
+
+/* =========================================================
+   NAVIGATION
+   ========================================================= */
+const NAV=[
+  {grp:'Référentiel',items:[
+    {id:'exploitant',ic:'🏢',label:'Exploitant'},
+    {id:'pilotes',ic:'👤',label:'Télépilotes'},
+  ]},
+  {grp:'Préparation',items:[
+    {id:'sora',ic:'🧭',label:'Assistant SORA',soon:true},
+    {id:'formulaires',ic:'📄',label:'Formulaires',soon:true},
+  ]},
+  {grp:'Ressources',items:[
+    {id:'liens',ic:'🔗',label:'Liens & contacts'},
+  ]},
+];
+let current='exploitant';
+
+function renderNav(){
+  const side=document.getElementById('side');
+  side.innerHTML='';
+  NAV.forEach(g=>{
+    const t=document.createElement('div');t.className='grp';t.textContent=g.grp;side.appendChild(t);
+    g.items.forEach(it=>{
+      const a=document.createElement('a');
+      a.href='#'+it.id;a.dataset.id=it.id;
+      a.className=(it.id===current?'active':'')+(it.soon?' soon':'');
+      a.innerHTML='<span class="ic">'+it.ic+'</span> '+it.label+(it.soon?'<span class="tag">à venir</span>':'');
+      a.onclick=e=>{e.preventDefault();current=it.id;renderNav();renderView();};
+      side.appendChild(a);
+    });
+  });
+}
+
+/* =========================================================
+   VUES
+   ========================================================= */
+function el(tag,cls,txt){const e=document.createElement(tag);if(cls)e.className=cls;if(txt!=null)e.textContent=txt;return e;}
+function card(kick,title,desc){
+  const c=el('div','card');
+  if(kick)c.appendChild(el('div','kick',kick));
+  c.appendChild(el('h2',null,title));
+  if(desc)c.appendChild(el('div','desc',desc));
+  return c;
+}
+function field(label,obj,key,opts){
+  opts=opts||{};
+  const f=el('div','field'+(opts.full?' full':''));
+  f.appendChild(el('label',null,label));
+  const inp=opts.type==='textarea'?document.createElement('textarea'):document.createElement('input');
+  if(opts.type==='textarea'&&opts.rows)inp.rows=opts.rows;
+  inp.value=obj[key]||'';
+  inp.oninput=()=>{obj[key]=inp.value;scheduleSave();};
+  if(opts.onlabel)inp.oninput=()=>{obj[key]=inp.value;scheduleSave();opts.onlabel();};
+  f.appendChild(inp);
+  return f;
+}
+
+function renderView(){
+  const v=document.getElementById('view');
+  v.innerHTML='';
+  ({exploitant:viewExploitant,pilotes:viewPilotes,liens:viewLiens,sora:viewSoon,formulaires:viewSoon}[current]||viewSoon)(v);
+}
+
+function viewExploitant(v){
+  v.appendChild(el('h1','page-h','Exploitant'));
+  v.appendChild(el('p','page-sub','Renseigné une fois, repris automatiquement dans chaque nouveau dossier de vol.'));
+  const e=store.exploitant;
+  const c=card('Référentiel','Identité de l\'exploitant','Ces informations alimenteront le ConOps, les Cerfa et les demandes.');
+  const g=el('div','grid');
+  g.append(
+    field('Raison sociale',e,'raison'),field('Forme juridique',e,'forme'),
+    field('SIRET',e,'siret'),field('N° exploitant UAS',e,'numUAS'),
+    field('Responsable',e,'responsable'),field('Assureur RC',e,'assureur'),
+    field('Adresse',e,'adresse'),field('N° police d\'assurance',e,'police'),
+    field('Code postal',e,'cp'),field('Ville',e,'ville'),
+    field('Téléphone',e,'tel'),field('Courriel',e,'mail'),
+  );
+  c.appendChild(g);
+  c.appendChild(field('Notes',e,'notes',{type:'textarea',rows:2,full:true}));
+  v.appendChild(c);
+}
+
+function viewPilotes(v){
+  v.appendChild(el('h1','page-h','Télépilotes'));
+  v.appendChild(el('p','page-sub','Fiches enregistrées. Le télépilote « référent » est repris par défaut dans les nouveaux dossiers.'));
+  const bar=el('div','row-actions');
+  const add=el('button','btn primary','＋ Ajouter un télépilote');
+  add.onclick=()=>{
+    const id='p'+Date.now();
+    store.pilotes.push({id,prenom:'',nom:'',tel:'',mail:'',numTele:'',brevets:'',mentions:'',habilitations:'',notes:''});
+    if(!store.referent)store.referent=id;
+    scheduleSave();renderView();
+  };
+  bar.appendChild(add);
+  v.appendChild(bar);
+
+  if(store.pilotes.length===0){
+    v.appendChild(el('div','note','Aucun télépilote enregistré. Ajoutez-en un pour commencer.'));
+    return;
   }
+  store.pilotes.forEach(p=>{
+    const pc=el('div','pilote');
+    const head=el('div','head');
+    const title=el('h3',null,((p.prenom||'')+' '+(p.nom||'')).trim()||'Nouveau télépilote');
+    const right=el('div','row-actions');right.style.margin='0';
 
-  btn.addEventListener('click', submit);
-  pin.addEventListener('keydown', e=>{ if(e.key==='Enter'){ mode==='create'?pin2.focus():submit(); }});
-  pin2.addEventListener('keydown', e=>{ if(e.key==='Enter') submit(); });
+    const refLab=el('label','refbox'+(store.referent===p.id?' sel':''));
+    const radio=document.createElement('input');radio.type='radio';radio.name='ref';radio.checked=store.referent===p.id;
+    radio.onchange=()=>{store.referent=p.id;scheduleSave();renderView();};
+    refLab.append(radio,document.createTextNode(' Référent'));
 
-  async function submit(){
-    const code=pin.value.trim();
-    if(mode==='create'){
-      if(code.length<4){setMsg('Au moins 4 chiffres.','err');return;}
-      if(code!==pin2.value.trim()){setMsg('Les deux codes ne correspondent pas.','err');return;}
-      try{ await invoke('set_pin',{pin:code}); setMsg('Code enregistré.','ok'); showApp(); }
-      catch(e){ setMsg(String(e),'err'); }
-    } else {
-      const okv = await invoke('verify_pin',{pin:code});
-      if(okv){ setMsg('',''); showApp(); }
-      else { setMsg('Code incorrect.','err'); pin.value=''; pin.focus(); }
-    }
+    const del=el('button','btn danger sm','🗑 Supprimer');
+    del.onclick=()=>{
+      if(!confirm('Supprimer ce télépilote ?'))return;
+      store.pilotes=store.pilotes.filter(x=>x.id!==p.id);
+      if(store.referent===p.id)store.referent=store.pilotes[0]?store.pilotes[0].id:'';
+      scheduleSave();renderView();
+    };
+    right.append(refLab,del);
+    head.append(title,right);
+    pc.appendChild(head);
+
+    const g=el('div','grid');
+    const upd=()=>{title.textContent=((p.prenom||'')+' '+(p.nom||'')).trim()||'Nouveau télépilote';};
+    g.append(
+      field('Prénom',p,'prenom',{onlabel:upd}),field('Nom',p,'nom',{onlabel:upd}),
+      field('Téléphone',p,'tel'),field('Courriel',p,'mail'),
+      field('N° télépilote / attestation',p,'numTele'),field('Brevets / formations',p,'brevets'),
+      field('Mentions drone (A1/A2/A3, STS-01/02, CATS…)',p,'mentions'),field('Habilitations (élec, CACES, SST…)',p,'habilitations'),
+    );
+    pc.appendChild(g);
+    pc.appendChild(field('Notes',p,'notes',{type:'textarea',rows:2,full:true}));
+    v.appendChild(pc);
+  });
+}
+
+const LIENS=[
+  {ic:'🌦',t:'Météo France',u:'https://meteofrance.com/',d:'Prévisions locales'},
+  {ic:'🛰',t:'Geoportail',u:'https://www.geoportail.gouv.fr/',d:'Cartes & restrictions'},
+  {ic:'✈',t:'Mach 7 / Drones (restrictions)',u:'https://clearance.dsna.aviation-civile.gouv.fr/',d:'Zones de vol drone'},
+  {ic:'📋',t:'AlphaTango',u:'https://alphatango.aviation-civile.gouv.fr/',d:'Exploitant & déclarations'},
+  {ic:'📢',t:'NOTAM (SOFIA)',u:'https://sofia-briefing.aviation-civile.gouv.fr/',d:'Avis aux navigateurs'},
+  {ic:'📖',t:'EASA — Réglementation UAS',u:'https://www.easa.europa.eu/en/domains/civil-drones',d:'Cadre européen'},
+  {ic:'🗺',t:'MÉTÉO du vent (Windy)',u:'https://www.windy.com/',d:'Vent en altitude'},
+  {ic:'🏛',t:'Écologie.gouv — Drones',u:'https://www.ecologie.gouv.fr/politiques-publiques/drones-usages-professionnels',d:'Guides officiels'},
+];
+function viewLiens(v){
+  v.appendChild(el('h1','page-h','Liens & contacts'));
+  v.appendChild(el('p','page-sub','Accès rapide aux ressources officielles de préparation de vol.'));
+  const c=card('Ressources','Liens utiles','Ouverts dans le navigateur par défaut.');
+  const list=el('div','linklist');
+  LIENS.forEach(l=>{
+    const a=document.createElement('a');a.href=l.u;a.target='_blank';a.rel='noopener';
+    a.innerHTML='<span class="ic">'+l.ic+'</span><span>'+l.t+'<small>'+l.d+'</small></span>';
+    list.appendChild(a);
+  });
+  c.appendChild(list);
+  v.appendChild(c);
+}
+
+function viewSoon(v){
+  const labels={sora:'Assistant SORA',formulaires:'Formulaires (Cerfa, dérogation, AOT)'};
+  v.appendChild(el('h1','page-h',labels[current]||'Module'));
+  const box=el('div','soon-page');
+  box.innerHTML='<div class="big">🚧</div><b>Module en cours de portage</b><br><span style="font-size:13px">Repris depuis l\'assistant SORA existant dans une prochaine itération. Le référentiel ci-contre l\'alimentera automatiquement.</span>';
+  v.appendChild(box);
+}
+
+/* =========================================================
+   DÉMARRAGE / VERROU
+   ========================================================= */
+const lock=document.getElementById('lock'), appEl=document.getElementById('app');
+const lockTitle=document.getElementById('lockTitle'), lockText=document.getElementById('lockText');
+const pin=document.getElementById('pin'), pin2=document.getElementById('pin2');
+const btnPin=document.getElementById('btnPin'), pinMsg=document.getElementById('pinMsg');
+let pinMode='enter';
+
+function setPinMsg(t,cls){pinMsg.textContent=t;pinMsg.className='msg '+(cls||'');}
+
+async function bootLock(){
+  const has=await invoke('pin_status');
+  pinMode=has?'enter':'create';
+  if(pinMode==='create'){
+    lockTitle.textContent='Créer un code PIN';
+    lockText.textContent='Choisissez un code (au moins 4 chiffres) pour protéger l\'accès à ce poste.';
+    pin.placeholder='Nouveau code';pin2.style.display='block';
+  }else{
+    lockTitle.textContent='Assistant Vol Drone';
+    lockText.textContent='Entrez votre code PIN.';
+    pin2.style.display='none';
   }
-  document.getElementById('lockBtn').addEventListener('click',()=>{ boot(); showLock(); });
-  boot();
+  pin.value='';pin2.value='';pin.focus();
+}
+async function submitPin(){
+  const code=pin.value.trim();
+  if(pinMode==='create'){
+    if(code.length<4){setPinMsg('Au moins 4 chiffres.','err');return;}
+    if(code!==pin2.value.trim()){setPinMsg('Les deux codes ne correspondent pas.','err');return;}
+    try{await invoke('set_pin',{pin:code});setPinMsg('',''); enterApp();}
+    catch(e){setPinMsg(String(e),'err');}
+  }else{
+    const okv=await invoke('verify_pin',{pin:code});
+    if(okv){setPinMsg('','');enterApp();}
+    else{setPinMsg('Code incorrect.','err');pin.value='';pin.focus();}
+  }
+}
+async function enterApp(){
+  lock.style.display='none';appEl.classList.add('show');
+  await loadStore();
+  renderNav();renderView();
+  setSaved('');
+}
+btnPin.addEventListener('click',submitPin);
+pin.addEventListener('keydown',e=>{if(e.key==='Enter'){pinMode==='create'?pin2.focus():submitPin();}});
+pin2.addEventListener('keydown',e=>{if(e.key==='Enter')submitPin();});
+document.getElementById('btnLock').addEventListener('click',()=>{appEl.classList.remove('show');lock.style.display='flex';bootLock();});
+
+bootLock();
 </script>
 </body>
 </html>
