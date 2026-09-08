@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Assistant Vol Drone</title>
+<style>
+  :root{--bleu:#1a3c6e;--bleu2:#2b6cb0;--bleu-clair:#e8f0fb;--bord:#d9e0ea;--gris:#5a6472;--texte:#1f2733;--vert:#2f855a;--rouge:#c53030}
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%}
+  body{font-family:"Segoe UI",Roboto,system-ui,Arial,sans-serif;color:var(--texte);background:var(--bleu);display:flex;align-items:center;justify-content:center;height:100vh}
+  .card{background:#fff;border-radius:16px;box-shadow:0 10px 40px rgba(0,0,0,.25);padding:34px 38px;width:360px;text-align:center}
+  .logo{width:64px;height:64px;border-radius:16px;background:var(--bleu);color:#fff;font-size:30px;display:flex;align-items:center;justify-content:center;margin:0 auto 16px}
+  h1{color:var(--bleu);font-size:20px;margin:0 0 4px}
+  p{color:var(--gris);font-size:13.5px;margin:4px 0 18px}
+  input{width:100%;padding:12px 14px;border:1px solid var(--bord);border-radius:10px;font-size:20px;text-align:center;letter-spacing:8px}
+  input:focus{outline:none;border-color:var(--bleu2);box-shadow:0 0 0 3px rgba(43,108,176,.15)}
+  button{width:100%;margin-top:14px;padding:12px;border:none;border-radius:10px;background:var(--bleu2);color:#fff;font-size:15px;font-weight:600;cursor:pointer}
+  button:hover{background:var(--bleu)}
+  .msg{min-height:18px;font-size:13px;margin-top:10px}
+  .msg.err{color:var(--rouge)}
+  .msg.ok{color:var(--vert)}
+  .home{width:100%;max-width:760px;padding:0 24px}
+  .home h1{font-size:24px}
+  .badge{display:inline-block;background:var(--bleu-clair);color:var(--bleu);border-radius:20px;padding:4px 12px;font-size:12px;font-weight:700;margin-bottom:12px}
+  .hidden{display:none!important}
+</style>
+</head>
+<body>
+
+<!-- Écran verrou PIN -->
+<div id="lock" class="card">
+  <div class="logo">🛩</div>
+  <h1 id="lockTitle">Assistant Vol Drone</h1>
+  <p id="lockText">Chargement…</p>
+  <input id="pin" type="password" inputmode="numeric" maxlength="8" autocomplete="off" placeholder="••••">
+  <input id="pin2" type="password" inputmode="numeric" maxlength="8" autocomplete="off" placeholder="Confirmer" class="hidden">
+  <button id="btn">Valider</button>
+  <div id="msg" class="msg"></div>
+</div>
+
+<!-- Écran principal (placeholder milestone 1) -->
+<div id="app" class="home hidden" style="text-align:center;color:#fff">
+  <div class="badge">Version desktop · squelette</div>
+  <h1>Bienvenue 👋</h1>
+  <p style="color:#cdddf5">Le verrou PIN fonctionne et la coque Rust/Tauri tourne. La reprise complète de l'interface SORA (référentiel, dossiers, Cerfa, dérogation, AOT…) arrive dans les prochaines itérations.</p>
+  <button id="lockBtn" style="max-width:200px;margin:16px auto 0;background:rgba(255,255,255,.15)">Verrouiller</button>
+</div>
+
+<script>
+  const invoke = window.__TAURI__.core.invoke;
+  const lock=document.getElementById('lock'), appEl=document.getElementById('app');
+  const title=document.getElementById('lockTitle'), text=document.getElementById('lockText');
+  const pin=document.getElementById('pin'), pin2=document.getElementById('pin2');
+  const btn=document.getElementById('btn'), msg=document.getElementById('msg');
+  let mode='enter';
+
+  function setMsg(t,cls){msg.textContent=t;msg.className='msg '+(cls||'');}
+  function showApp(){lock.classList.add('hidden');appEl.classList.remove('hidden');}
+  function showLock(){appEl.classList.add('hidden');lock.classList.remove('hidden');pin.value='';pin2.value='';pin.focus();}
+
+  async function boot(){
+    const has = await invoke('pin_status');
+    mode = has ? 'enter' : 'create';
+    if(mode==='create'){
+      title.textContent='Créer un code PIN';
+      text.textContent='Choisissez un code (au moins 4 chiffres) pour protéger l\'accès à vos données sur ce poste.';
+      pin.placeholder='Nouveau code'; pin2.classList.remove('hidden');
+    } else {
+      title.textContent='Assistant Vol Drone';
+      text.textContent='Entrez votre code PIN.';
+    }
+    pin.focus();
+  }
+
+  btn.addEventListener('click', submit);
+  pin.addEventListener('keydown', e=>{ if(e.key==='Enter'){ mode==='create'?pin2.focus():submit(); }});
+  pin2.addEventListener('keydown', e=>{ if(e.key==='Enter') submit(); });
+
+  async function submit(){
+    const code=pin.value.trim();
+    if(mode==='create'){
+      if(code.length<4){setMsg('Au moins 4 chiffres.','err');return;}
+      if(code!==pin2.value.trim()){setMsg('Les deux codes ne correspondent pas.','err');return;}
+      try{ await invoke('set_pin',{pin:code}); setMsg('Code enregistré.','ok'); showApp(); }
+      catch(e){ setMsg(String(e),'err'); }
+    } else {
+      const okv = await invoke('verify_pin',{pin:code});
+      if(okv){ setMsg('',''); showApp(); }
+      else { setMsg('Code incorrect.','err'); pin.value=''; pin.focus(); }
+    }
+  }
+  document.getElementById('lockBtn').addEventListener('click',()=>{ boot(); showLock(); });
+  boot();
+</script>
+</body>
+</html>

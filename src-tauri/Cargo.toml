@@ -1,0 +1,19 @@
+[package]
+name = "assistant-vol-drone"
+version = "0.1.0"
+description = "Assistant de préparation de vol drone — MGI"
+authors = ["MGI - Paul Jeannin-Girardon"]
+edition = "2021"
+
+[lib]
+name = "app_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = [] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+sha2 = "0.10"

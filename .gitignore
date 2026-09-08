@@ -1,0 +1,13 @@
+# Rust / Tauri
+/src-tauri/target/
+/src-tauri/gen/
+target/
+
+# Node (au cas où on ajoute un bundler plus tard)
+node_modules/
+dist/
+
+# Divers
+.DS_Store
+Thumbs.db
+*.log
