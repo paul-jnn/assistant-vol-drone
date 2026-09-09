@@ -32,12 +32,14 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y libwebkit2gtk-4.1-dev libgtk-3-dev librsvg2-dev libayatana-appindicator3-dev patchelf
 
-      - name: Récupérer pdf-lib (bundle local)
+      - name: Récupérer les bibliothèques front (bundle local)
         shell: bash
         run: |
           mkdir -p src/vendor
           curl -fsSL -o src/vendor/pdf-lib.min.js https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js
-          test -s src/vendor/pdf-lib.min.js
+          curl -fsSL -o src/vendor/leaflet.js https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js
+          curl -fsSL -o src/vendor/leaflet.css https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css
+          test -s src/vendor/pdf-lib.min.js && test -s src/vendor/leaflet.js && test -s src/vendor/leaflet.css
 
       - name: Build + release signée (Tauri)
         uses: tauri-apps/tauri-action@v0

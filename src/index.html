@@ -148,6 +148,16 @@
   .updbar .go{background:#fff;color:var(--bleu)}
   .updbar .go:hover{background:#e8f0fb}
   .updbar .x{background:rgba(255,255,255,.15);color:#fff;padding:7px 10px}
+  .mapmodal{position:fixed;inset:0;z-index:70;background:rgba(20,40,70,.55);display:flex;align-items:center;justify-content:center;padding:24px}
+  .mapbox{background:#fff;border-radius:14px;width:min(820px,100%);max-height:90vh;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,.35)}
+  .maphead{padding:14px 18px;border-bottom:1px solid var(--bord)}
+  .maphead b{color:var(--bleu);font-size:15px}.maphead span{display:block;color:var(--gris);font-size:12.5px;margin-top:2px}
+  .mapsearch{display:flex;gap:8px;padding:12px 18px}
+  .mapsearch input{flex:1;padding:9px 11px;border:1px solid var(--bord);border-radius:9px;font-size:14px;font-family:inherit}
+  .btn.sm.primary{background:var(--bleu2);border-color:var(--bleu2);color:#fff}
+  .mapcanvas{flex:1;min-height:380px}
+  .mapfoot{display:flex;align-items:center;gap:10px;padding:12px 18px;border-top:1px solid var(--bord)}
+  .mapcoord{flex:1;font-size:13px;color:var(--gris)}
   .fieldlabel{font-size:12px;color:var(--gris);font-weight:700;margin:14px 0 7px}
   .chips{display:flex;flex-wrap:wrap;gap:7px;margin-bottom:4px}
   .chip{border:1px solid var(--bord);background:#fff;color:var(--gris);border-radius:20px;padding:6px 14px;font-size:13px;font-weight:600}
@@ -191,6 +201,8 @@
 
 <div id="updbar" class="updbar hidden"></div>
 
+<link rel="stylesheet" href="vendor/leaflet.css">
+<script src="vendor/leaflet.js"></script>
 <script src="vendor/pdf-lib.min.js"></script>
 <script>
 "use strict";
@@ -295,6 +307,7 @@ function emptyDossier(){return {
   titre:'', date:'', lieu:'', notes:'',
   dateDebut:'', dateFin:'', hauteurMax:'', classeC:'', typeVol:'',
   environnement:'', distanceTiers:'',
+  siteAdresse:'', siteCp:'', siteVille:'',
   lat:'', lon:'', icao:'', meteo:{},
   regime:'', sousCategorie:'', pdra:'',
   appareil:{key:'',marque:'',modele:'',masse:'',serie:''},
@@ -691,7 +704,18 @@ function dosMission(v,D){
   v.appendChild(ac);
 
   // Repérage & météo
-  const mc=card('Site','Repérage & météo','Coordonnées du site (pour la carte des restrictions) et relevé météo aéronautique de l\'aérodrome proche.');
+  const mc=card('Site','Repérage & météo','Localisez le site par son adresse ou en le pointant sur la carte. Coordonnées et météo alimentent le dossier.');
+  const ga=el('div','grid3');
+  ga.append(
+    field('Adresse du site',D,'siteAdresse'),
+    field('Code postal',D,'siteCp'),
+    field('Ville',D,'siteVille'),
+  );
+  mc.appendChild(ga);
+  const bLoc=el('div','row-actions');
+  const b1=el('button','btn primary','📍 Localiser (adresse → point)'); b1.onclick=()=>geocodeSite(D);
+  const b2=el('button','btn','🗺 Choisir sur la carte'); b2.onclick=()=>openMapPicker(D);
+  bLoc.append(b1,b2); mc.appendChild(bLoc);
   const gm=el('div','grid3');
   gm.append(
     field('Latitude',D,'lat'),
@@ -700,12 +724,12 @@ function dosMission(v,D){
   );
   mc.appendChild(gm);
   const mb=el('div','row-actions');
-  const bMap=el('button','btn','🗺 Ouvrir la carte des restrictions ici');
-  bMap.onclick=()=>{ const la=(D.lat||'').trim(), lo=(D.lon||'').trim(); if(!la||!lo){alert('Renseignez latitude et longitude.');return;} openExternal('https://www.geoportail.gouv.fr/carte?c='+encodeURIComponent(lo)+','+encodeURIComponent(la)+'&z=15'); };
+  const bMap=el('button','btn','🛰 Carte des restrictions ici');
+  bMap.onclick=()=>{ const la=(D.lat||'').trim(), lo=(D.lon||'').trim(); if(!la||!lo){alert('Localisez d\'abord le site.');return;} openExternal('https://www.geoportail.gouv.fr/carte?c='+encodeURIComponent(lo)+','+encodeURIComponent(la)+'&z=15'); };
   const bMeteo=el('button','btn primary','🌦 Relever la météo');
   bMeteo.onclick=()=>releverMeteo(D);
   mb.append(bMap,bMeteo); mc.appendChild(mb);
-  mc.appendChild(el('div','note','Météo : nécessite une connexion Internet au moment du relevé. Le résultat est enregistré dans le dossier et repris dans le PDF.'));
+  mc.appendChild(el('div','note','Localisation et météo nécessitent une connexion Internet. Les résultats sont enregistrés dans le dossier et repris dans le PDF.'));
   if(D.meteo && D.meteo.raw){
     const m=D.meteo;
     const box=el('div','result');
@@ -734,6 +758,79 @@ async function releverMeteo(D){
       wdir:s.wdir, wspd:s.wspd, temp:s.temp, visib:s.visib, fltCat:s.fltCat, raw:s.rawOb, taf:taf };
     scheduleSave(); renderView(); setSaved('✓ Météo relevée');
   }catch(e){ alert('Relevé impossible (hors ligne ?) : '+e); setSaved(''); }
+}
+async function geocode(q){
+  const r=await fetch('https://nominatim.openstreetmap.org/search?format=json&limit=1&countrycodes=fr&q='+encodeURIComponent(q),{headers:{'Accept':'application/json'}});
+  return await r.json();
+}
+async function reverseGeocode(lat,lon){
+  try{
+    const r=await fetch('https://nominatim.openstreetmap.org/reverse?format=json&zoom=18&lat='+lat+'&lon='+lon,{headers:{'Accept':'application/json'}});
+    return await r.json();
+  }catch(e){ return null; }
+}
+async function geocodeSite(D){
+  const q=[D.siteAdresse,[D.siteCp,D.siteVille].filter(Boolean).join(' ')].filter(Boolean).join(', ');
+  if(!q){ alert('Renseignez au moins la ville (et l\'adresse si possible).'); return; }
+  setSaved('Localisation…');
+  try{
+    const arr=await geocode(q);
+    if(!arr.length){ alert('Adresse introuvable. Précisez la ville ou le code postal.'); setSaved(''); return; }
+    D.lat=(+arr[0].lat).toFixed(6); D.lon=(+arr[0].lon).toFixed(6);
+    scheduleSave(); renderView(); setSaved('✓ Localisé');
+  }catch(e){ alert('Localisation impossible (hors ligne ?) : '+e); setSaved(''); }
+}
+function openMapPicker(D){
+  if(!window.L){ alert('Carte indisponible (hors ligne). Utilisez « Localiser » par adresse ou saisissez les coordonnées à la main.'); return; }
+  const ov=document.createElement('div'); ov.className='mapmodal';
+  const box=document.createElement('div'); box.className='mapbox';
+  const head=document.createElement('div'); head.className='maphead';
+  head.innerHTML='<b>Pointez le lieu de vol</b><span>Cherchez une adresse ou cliquez sur la carte</span>';
+  const search=document.createElement('div'); search.className='mapsearch';
+  const si=document.createElement('input'); si.placeholder='Adresse, lieu-dit, ville…';
+  const sb=document.createElement('button'); sb.className='btn sm primary'; sb.textContent='Rechercher';
+  search.append(si,sb);
+  const mapdiv=document.createElement('div'); mapdiv.className='mapcanvas';
+  const foot=document.createElement('div'); foot.className='mapfoot';
+  const coordLbl=document.createElement('div'); coordLbl.className='mapcoord'; coordLbl.textContent=(D.lat&&D.lon)?('Point actuel : '+D.lat+', '+D.lon):'Aucun point';
+  const cancel=document.createElement('button'); cancel.className='btn'; cancel.textContent='Annuler';
+  const ok=document.createElement('button'); ok.className='btn primary'; ok.textContent='Valider ce point';
+  foot.append(coordLbl,cancel,ok);
+  box.append(head,search,mapdiv,foot); ov.appendChild(box); document.body.appendChild(ov);
+
+  const start=(D.lat&&D.lon)?[+D.lat,+D.lon]:[46.85,-1.15];
+  const map=L.map(mapdiv).setView(start, (D.lat&&D.lon)?15:8);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'© OpenStreetMap'}).addTo(map);
+  let marker=null, pick=(D.lat&&D.lon)?{lat:+D.lat,lon:+D.lon}:null;
+  function setPoint(la,lo){
+    pick={lat:la,lon:lo};
+    if(marker) marker.setLatLng([la,lo]); else marker=L.circleMarker([la,lo],{radius:9,color:'#1a3c6e',weight:2,fillColor:'#2b6cb0',fillOpacity:1}).addTo(map);
+    coordLbl.textContent='Point : '+la.toFixed(6)+', '+lo.toFixed(6);
+  }
+  if(pick) setPoint(pick.lat,pick.lon);
+  map.on('click',e=>setPoint(e.latlng.lat,e.latlng.lng));
+  setTimeout(()=>map.invalidateSize(),80);
+  async function doSearch(){
+    const q=si.value.trim(); if(!q)return; sb.textContent='…';
+    try{ const arr=await geocode(q); if(arr.length){ const la=+arr[0].lat, lo=+arr[0].lon; map.setView([la,lo],15); setPoint(la,lo); } else alert('Introuvable.'); }
+    catch(e){ alert('Recherche impossible (hors ligne ?).'); }
+    sb.textContent='Rechercher';
+  }
+  sb.onclick=doSearch; si.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();doSearch();}});
+  const close=()=>{ try{map.remove();}catch(e){} document.body.removeChild(ov); };
+  cancel.onclick=close;
+  ok.onclick=async()=>{
+    if(!pick){ alert('Cliquez sur la carte pour poser un point.'); return; }
+    D.lat=pick.lat.toFixed(6); D.lon=pick.lon.toFixed(6);
+    ok.textContent='…';
+    const rev=await reverseGeocode(D.lat,D.lon);
+    if(rev&&rev.address){ const a=rev.address;
+      if(!D.siteAdresse) D.siteAdresse=[a.house_number,a.road].filter(Boolean).join(' ')||D.siteAdresse;
+      if(!D.siteCp) D.siteCp=a.postcode||D.siteCp;
+      if(!D.siteVille) D.siteVille=a.village||a.town||a.city||a.municipality||D.siteVille;
+    }
+    scheduleSave(); close(); renderView(); setSaved('✓ Point enregistré');
+  };
 }
 function applyModel(D){
   const d=djiFind(D.appareil.key);
