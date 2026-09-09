@@ -172,6 +172,7 @@
   <main class="main" id="view"></main>
 </div>
 
+<script src="vendor/pdf-lib.min.js"></script>
 <script>
 "use strict";
 const invoke = window.__TAURI__.core.invoke;
@@ -179,6 +180,12 @@ function openExternal(url){
   try{ if(window.__TAURI__.opener && window.__TAURI__.opener.openUrl){ window.__TAURI__.opener.openUrl(url); return; } }catch(e){}
   invoke('plugin:opener|open_url',{url:url}).catch(()=>{});
 }
+function openPath(path){
+  try{ if(window.__TAURI__.opener && window.__TAURI__.opener.openPath){ window.__TAURI__.opener.openPath(path); return; } }catch(e){}
+  invoke('plugin:opener|open_path',{path:path}).catch(()=>{});
+}
+function b64FromBytes(bytes){ let s=''; const n=bytes.length; for(let i=0;i<n;i++)s+=String.fromCharCode(bytes[i]); return btoa(s); }
+function bytesFromB64(b64){ const bin=atob(b64); const a=new Uint8Array(bin.length); for(let i=0;i<bin.length;i++)a[i]=bin.charCodeAt(i); return a; }
 
 /* ========== RÉFÉRENCES SORA 2.5 ========== */
 const IGRC = {
@@ -253,9 +260,11 @@ function emptyExploitant(){return {raison:'',forme:'',siret:'',numUAS:'',respons
 function emptyDossier(){return {
   id:'d'+Date.now()+Math.random().toString(36).slice(2,6),
   titre:'', date:'', lieu:'', notes:'',
+  dateDebut:'', dateFin:'', hauteurMax:'', classeC:'', typeVol:'',
   appareil:{key:'',marque:'',modele:'',masse:'',serie:''},
   grc:{dim:'',vit:'',densite:'',mini:false,m1a:'none',m1b:'none',m1c:'none',m2:'none'},
-  arc:{atypical:'',fl600:'',airport:'',airportClass:'',above500:'',adsb:'',eac:'',urban:'',residual:'',reduceJust:'',tacJust:''}
+  arc:{atypical:'',fl600:'',airport:'',airportClass:'',above500:'',adsb:'',eac:'',urban:'',residual:'',reduceJust:'',tacJust:''},
+  forms:{regime:'',expType:'morale',derogType:'',aotGestionnaire:'',aotObjet:''}
 };}
 function emptyStore(){return {exploitant:emptyExploitant(),pilotes:[],referent:'',dossiers:[],currentId:''};}
 function seededStore(){
@@ -275,6 +284,7 @@ function normDossier(d){
   nd.appareil=Object.assign(emptyDossier().appareil,d&&d.appareil||{});
   nd.grc=Object.assign(emptyDossier().grc,d&&d.grc||{});
   nd.arc=Object.assign(emptyDossier().arc,d&&d.arc||{});
+  nd.forms=Object.assign(emptyDossier().forms,d&&d.forms||{});
   return nd;
 }
 function normalize(raw){
@@ -371,7 +381,6 @@ const NAV=[
   ]},
   {grp:'Ressources',items:[
     {id:'liens',ic:'🔗',label:'Liens & contacts'},
-    {id:'formulaires',ic:'📄',label:'Formulaires',soon:true},
   ]},
 ];
 let current='exploitant';
@@ -533,7 +542,7 @@ function viewDossier(v){
   v.appendChild(summaryBar(R));
 
   const steps=el('div','steps');
-  [['mission','Mission & appareil'],['grc','1·2·3 — Risque sol'],['arc','4·5·6 — Risque air'],['sail','7·10 — SAIL & OSO']].forEach(s=>{
+  [['mission','Mission & appareil'],['grc','1·2·3 — Risque sol'],['arc','4·5·6 — Risque air'],['sail','7·10 — SAIL & OSO'],['form','Formulaires']].forEach(s=>{
     const b=el('button',soraStep===s[0]?'on':'',s[1]);
     b.onclick=()=>{soraStep=s[0];renderView();};
     steps.appendChild(b);
@@ -543,16 +552,22 @@ function viewDossier(v){
   if(soraStep==='mission') dosMission(v,D);
   else if(soraStep==='grc') soraGRC(v,D,R);
   else if(soraStep==='arc') soraARC(v,D,R);
-  else soraSAIL(v,D,R);
+  else if(soraStep==='sail') soraSAIL(v,D,R);
+  else dosForms(v,D,R);
 }
 
 function dosMission(v,D){
-  const c=card('Mission','Informations générales','Identité de la mission et appareil utilisé.');
+  const c=card('Mission','Informations générales','Identité de la mission et appareil utilisé. Ces champs alimentent aussi les formulaires.');
   const g=el('div','grid');
   g.append(
     field('Intitulé de la mission',D,'titre',{after:()=>{renderNav();}}),
     field('Date',D,'date',{inputType:'date'}),
     field('Lieu / site',D,'lieu',{full:true}),
+    field('Début (date & heure)',D,'dateDebut',{inputType:'datetime-local'}),
+    field('Fin (date & heure)',D,'dateFin',{inputType:'datetime-local'}),
+    field('Hauteur max de vol (m)',D,'hauteurMax'),
+    field('Classe C (marquage UAS)',D,'classeC',{type:'select',options:[['','—'],['C0','C0'],['C1','C1'],['C2','C2'],['C3','C3'],['C4','C4'],['C5','C5'],['C6','C6'],['sans','Sans marquage / hors classe']]}),
+    field('Type de vol',D,'typeVol',{type:'select',options:[['','—'],['VLOS','VLOS (vue directe)'],['EVLOS','EVLOS'],['BVLOS','BVLOS (hors vue)']]}),
   );
   c.appendChild(g);
   c.appendChild(field('Notes de mission',D,'notes',{type:'textarea',rows:2,full:true}));
@@ -791,6 +806,174 @@ function sailTable(R){
   const cap=el('div','desc','Matrice SAIL — SORA 2.5. GRC > 7 : catégorie certifiée.');
   cap.style.marginTop='4px';wrap.appendChild(cap);
   return wrap;
+}
+
+/* ---------- Formulaires ---------- */
+const CERFA_CHK={
+  ouvert:'Catégorie ouverte',
+  A1:'Souscatégorie A1', A2:'Souscatégorie A2', A3:'Souscatégorie A3',
+  STS01:'Scénario standard européen STS01 joindre une copie de laccusé de réception de déclaration dactivité émis par la DGAC',
+  S3:'Scénario standard national S3 Ne concerne que certains vols réalisés au profit de lEtat',
+  LUC:'Autres cas voir notice joindre une copie le cas échéant de lautorisationLUC délivré par la DGAC  autorisationLUC n'
+};
+const DEROG_TYPES=[['','— choisir'],
+  ['A','A — Nuit : vue directe (Ouverte, ou Spécifique S-1/S-3/STS-01) ou hors vue S-2/STS-02'],
+  ['B','B — Nuit : Spécifique hors scénario standard (autorisation générique)'],
+  ['C','C — Nuit : autres cas Spécifique hors standard (LUC)'],
+  ['D','D — Hauteur : hors vue, > 2 kg et > 50 m'],
+  ['E','E — Hauteur : hors vue, < 2 kg et > 120 m']];
+function esc(s){return String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
+function refPilote(){ return store.pilotes.find(p=>p.id===store.referent)||store.pilotes[0]||{}; }
+function ctx(D){
+  const e=store.exploitant, p=refPilote();
+  const adresse=[e.adresse,[e.cp,e.ville].filter(Boolean).join(' ')].filter(Boolean).join(', ');
+  return {
+    exploitant:e.raison||'', exploitantNum:e.numUAS||'', exploitantAdresse:adresse,
+    responsable:e.responsable||'', siret:e.siret||'',
+    telepilote:((p.prenom||'')+' '+(p.nom||'')).trim(), telTel:p.tel||'', telMail:p.mail||'',
+    drone:((D.appareil.marque||'')+' '+(D.appareil.modele||'')).trim(),
+    constr:D.appareil.marque||'', modele:D.appareil.modele||'',
+    droneMasse:D.appareil.masse||'', droneSerie:D.appareil.serie||'', droneClasse:D.classeC||'', droneVit:D.grc.vit||'',
+    titre:D.titre||'', lieu:D.lieu||'', hauteurMax:D.hauteurMax||'',
+    dateDebut:D.dateDebut||'', dateFin:D.dateFin||''
+  };
+}
+function dparts(s){ if(!s||s.indexOf('T')<0)return['','','']; const [dd,tt]=s.split('T'); const [y,m,day]=dd.split('-'); const [h,mi]=(tt||'').split(':'); return [day+'/'+m+'/'+y,h||'',mi||'']; }
+
+function cerfaMapping(D){
+  const co=ctx(D), e=store.exploitant, pilotes=store.pilotes;
+  const db=dparts(co.dateDebut), df=dparts(co.dateFin);
+  const numuas=(co.exploitantNum||'').replace(/^UAS-/,'');
+  const T={}; const expType=(D.forms||{}).expType;
+  if(expType!=='physique'){
+    T['Raison sociale ou dénomination']=co.exploitant; T['Adresse du siège social']=co.exploitantAdresse; T['Identifiant SIRENSIRET RCSRNE']=e.siret||'';
+    const rp=(co.responsable||'').trim().split(' '); T['Prénom_2']=rp.shift()||''; T['Nom_2']=rp.join(' ')||co.responsable;
+    T['Adresse postale_2']=co.exploitantAdresse; T['Qualité']='Gérant'; T['Fixe  Portable Courriel_2']='Portable : '+co.telTel+'   Courriel : '+co.telMail;
+  } else {
+    const rp=(co.responsable||co.telepilote||'').trim().split(' '); T['Prénom']=rp.shift()||''; T['Nom']=rp.join(' ');
+    T['Adresse postale']=co.exploitantAdresse; T['Identifiant SIRENSIRET RCSRNE']=e.siret||''; T['Fixe  Portable Courriel']='Portable : '+co.telTel+'   Courriel : '+co.telMail;
+  }
+  pilotes.slice(0,4).forEach((p,i)=>{ const n=i+1;
+    T['Télépilote '+n+'Nom']=p.nom||''; T['Télépilote '+n+'Prénom']=p.prenom||'';
+    T['Télépilote '+n+'Employeur Salarié']=e.raison||''; T['Télépilote '+n+'Indépendant OuiNon']='Oui';
+    T['Télépilote '+n+'Téléphone portable']=p.tel||''; T['Télépilote '+n+'Courriel']=p.mail||''; });
+  T['Texte53']=db[0];T['Texte54']=db[1];T['Texte55']=db[2];T['Texte56']=df[0];T['Texte57']=df[1];T['Texte58']=df[2];
+  T['Texte61']=co.constr;T['Texte62']=co.modele;T['Texte63']=co.droneClasse;T['Texte64']=co.droneMasse;T['Texte65']=co.droneSerie;T['Texte114']=numuas;
+  T['Texte95']=co.titre;T['Texte97']=co.lieu;T['AdresseRow1']=co.lieu;T['Texte100']=co.hauteurMax;
+  return T;
+}
+function derogMapping(D){
+  const co=ctx(D);
+  const db=dparts(co.dateDebut), df=dparts(co.dateFin);
+  const numuas=(co.exploitantNum||'').replace(/^UAS-/,'');
+  return {
+    'Zone de texte 1':co.exploitant,'Zone de texte 2':co.exploitantNum,'Zone de texte 3':co.exploitantAdresse,
+    'Zone de texte 4':co.telepilote,'Zone de texte 5':co.telTel,'Zone de texte 6':co.telMail,
+    'Zone de texte 7':db[0],'Zone de texte 9':db[1]?db[1]+'h'+db[2]:'','Zone de texte 8':df[0],'Zone de texte 10':df[1]?df[1]+'h'+df[2]:'',
+    'Zone de texte 11':co.constr,'Zone de texte 12':co.modele,'Zone de texte 13':co.droneClasse,'Zone de texte 14':numuas,'Zone de texte 15':co.droneMasse,
+    'Zone de texte 30':co.lieu,'Zone de texte 31':co.lieu,
+    'Zone de texte 26':co.hauteurMax,'Zone de texte 28':co.droneVit,
+    'Zone de texte 33':co.titre,'Zone de texte 36':co.responsable||co.telepilote
+  };
+}
+function aotHTML(D){
+  const co=ctx(D), a=D.forms||{};
+  const dstart=co.dateDebut?co.dateDebut.replace('T',' à ').replace(/-/g,'/'):'—';
+  const dend=co.dateFin?co.dateFin.replace('T',' à ').replace(/-/g,'/'):'—';
+  const objet=a.aotObjet||co.titre||'Opération par aéronef télépiloté (drone)';
+  const css="body{font-family:'Segoe UI',Arial,sans-serif;max-width:800px;margin:26px auto;color:#1f2733;font-size:12pt;line-height:1.55;padding:20px}.exp{font-size:11pt}.dest{margin:18px 0 0 auto;width:55%}.obj{margin:22px 0 12px;font-weight:600}.sign{margin-top:36px}@media print{body{margin:0}}";
+  return '<!DOCTYPE html><html lang="fr"><head><meta charset="UTF-8"><title>Demande AOT</title><style>'+css+'</style></head><body>'+
+  '<div class="exp">'+esc(co.exploitant)+'<br>'+esc(co.exploitantAdresse)+'<br>'+esc(co.telepilote)+' — '+esc(co.telTel)+' — '+esc(co.telMail)+(co.exploitantNum?'<br>Exploitant UAS n° '+esc(co.exploitantNum):'')+'</div>'+
+  '<div class="dest">'+esc(a.aotGestionnaire||'[Gestionnaire du domaine public / Mairie de la commune concernée]')+'</div>'+
+  '<p style="margin-top:24px">'+esc(co.lieu?co.lieu.split(',').slice(-1)[0].trim():'')+', le ______________</p>'+
+  '<p class="obj">Objet : Demande d\'autorisation d\'occupation temporaire du domaine public — opération par aéronef télépiloté (drone)</p>'+
+  '<p>Madame, Monsieur,</p>'+
+  '<p>Dans le cadre de l\'opération suivante : <b>'+esc(objet)+'</b>, réalisée au moyen d\'un aéronef télépiloté ('+esc(co.drone||'drone')+'), j\'ai l\'honneur de solliciter l\'autorisation d\'occuper temporairement le domaine public.</p>'+
+  '<p><b>Localisation :</b> '+esc(co.lieu||'—')+'<br><b>Dates et horaires prévus :</b> du '+esc(dstart)+' au '+esc(dend)+'<br><b>Emprise concernée :</b> zone de décollage/atterrissage et périmètre de sécurité (zone d\'exclusion tenue vide de tiers pendant l\'opération).<br><b>Hauteur maximale de vol :</b> '+esc(co.hauteurMax||'—')+' m.</p>'+
+  '<p>L\'opération est menée conformément à la réglementation applicable aux aéronefs sans équipage à bord (règlement (UE) 2019/947 et arrêtés nationaux). Un périmètre de sécurité est mis en place, l\'aéronef et sa charge ne survolent aucun tiers, et l\'exploitant est couvert par une assurance de responsabilité civile.</p>'+
+  '<p>Je me tiens à votre disposition pour tout complément (plan de situation, justificatifs) et vous prie d\'agréer, Madame, Monsieur, l\'expression de mes salutations distinguées.</p>'+
+  '<div class="sign">'+esc(co.responsable||co.telepilote)+'<br>'+esc(co.exploitant)+'</div>'+
+  '<p style="color:#666;font-size:9pt;margin-top:26px">Document généré par l\'Assistant Vol Drone (MGI). À adapter aux exigences de la commune / du gestionnaire.</p>'+
+  '</body></html>';
+}
+
+async function fillAndExport(templateName, mapping, checkFn, subdir, filename){
+  if(!window.PDFLib){ alert('Bibliothèque PDF non disponible. Réinstallez la dernière version compilée.'); return; }
+  const b64=await invoke('form_template',{name:templateName});
+  const doc=await PDFLib.PDFDocument.load(bytesFromB64(b64));
+  const form=doc.getForm();
+  let n=0;
+  for(const k in mapping){ try{ form.getTextField(k).setText(String(mapping[k]||'')); n++; }catch(e){} }
+  if(checkFn) checkFn(form);
+  const bytes=await doc.save();
+  const path=await invoke('export_file',{subdir:subdir,filename:filename,dataB64:b64FromBytes(bytes)});
+  openPath(path);
+  return {n,path};
+}
+async function genCerfa(D){
+  try{
+    const r=await fillAndExport('cerfa', cerfaMapping(D), (form)=>{
+      const chk=CERFA_CHK[(D.forms||{}).regime]; if(chk){ try{ form.getCheckBox(chk).check(); }catch(e){} }
+    }, D.titre||'Mission', 'Cerfa_15476-04_rempli.pdf');
+    if(r) setSaved('✓ Cerfa généré ('+r.n+' champs)');
+  }catch(e){ alert('Génération impossible : '+e); }
+}
+async function genDerog(D){
+  try{
+    const r=await fillAndExport('derog', derogMapping(D), (form)=>{
+      const chk=n=>{ try{ form.getCheckBox(n).check(); }catch(e){} };
+      const typeMap={A:'1',B:'2',C:'3',D:'4',E:'5'};
+      const t=(D.forms||{}).derogType; if(typeMap[t]) chk('Case #C3#A0 cocher '+typeMap[t]);
+      chk(D.typeVol==='BVLOS'?'Case #C3#A0 cocher 9':'Case #C3#A0 cocher 8');
+      ['Case #C3#A0 cocher 10','Case #C3#A0 cocher 11','Case #C3#A0 cocher 12'].forEach(chk);
+    }, D.titre||'Mission', 'Demande_derogation_R5-UAS-DEROG.pdf');
+    if(r) setSaved('✓ Dérogation générée');
+  }catch(e){ alert('Génération impossible : '+e); }
+}
+async function genAOT(D){
+  try{
+    const path=await invoke('export_file',{subdir:D.titre||'Mission',filename:'Demande_AOT.html',dataB64:b64FromBytes(new TextEncoder().encode(aotHTML(D)))});
+    openPath(path); setSaved('✓ Lettre AOT générée');
+  }catch(e){ alert('Génération impossible : '+e); }
+}
+
+function dosForms(v,D,R){
+  const okRef = store.exploitant.raison && refPilote().nom;
+  if(!okRef) v.appendChild(el('div','warn','Renseignez l\'exploitant et au moins un télépilote (référent) pour un remplissage complet.'));
+  if(!D.dateDebut) v.appendChild(el('div','note','Astuce : renseignez les dates/heures et la hauteur max dans « Mission & appareil » pour des formulaires plus complets.'));
+
+  // Cerfa 15476
+  const c1=card('Déclaration préalable','Cerfa 15476*04','Pré-remplit le formulaire officiel avec l\'exploitant, les télépilotes, l\'appareil et la mission. Enregistré dans Documents\\Assistant Vol Drone\\<mission>\\ puis ouvert.');
+  const g1=el('div','grid');
+  g1.append(
+    field('Type d\'exploitant',D.forms,'expType',{type:'select',options:[['morale','Personne morale (société)'],['physique','Personne physique']]}),
+    field('Catégorie / régime (case à cocher)',D.forms,'regime',{type:'select',options:[['','—'],['ouvert','Catégorie ouverte'],['A1','Sous-catégorie A1'],['A2','Sous-catégorie A2'],['A3','Sous-catégorie A3'],['STS01','STS-01 (standard européen)'],['S3','Scénario S-3 (national)'],['LUC','Autres cas / LUC']]}),
+  );
+  c1.appendChild(g1);
+  const b1=el('div','row-actions'); const gen1=el('button','btn primary','📄 Générer le Cerfa 15476*04'); gen1.onclick=()=>genCerfa(D); b1.appendChild(gen1); c1.appendChild(b1);
+  c1.appendChild(el('div','note','À compléter ensuite dans le PDF : heures détaillées, cases classe/captif, éloignement, puis signature.'));
+  v.appendChild(c1);
+
+  // Dérogation
+  const c2=card('Dérogation préfectorale','R5-UAS-DEROG v4','Dérogation vol de nuit ou hauteurs. Pré-remplit le formulaire officiel.');
+  const g2=el('div','grid');
+  g2.append(field('Type de dérogation',D.forms,'derogType',{type:'select',options:DEROG_TYPES,full:true}));
+  c2.appendChild(g2);
+  const b2=el('div','row-actions'); const gen2=el('button','btn primary','📄 Générer la dérogation'); gen2.onclick=()=>genDerog(D); b2.appendChild(gen2); c2.appendChild(b2);
+  c2.appendChild(el('div','note','À compléter : espaces aériens pénétrés, objet/justification détaillée, lieu & date de signature.'));
+  v.appendChild(c2);
+
+  // AOT
+  const c3=card('Occupation du domaine public','Lettre AOT','Le Cerfa 14023*01 (voirie) n\'étant pas interactif, l\'assistant génère une lettre de demande d\'AOT adaptée au drone (à imprimer en PDF).');
+  const g3=el('div','grid');
+  g3.append(
+    field('Destinataire (gestionnaire / mairie)',D.forms,'aotGestionnaire',{full:true}),
+    field('Objet de l\'opération',D.forms,'aotObjet',{full:true}),
+  );
+  c3.appendChild(g3);
+  const b3=el('div','row-actions'); const gen3=el('button','btn primary','📄 Générer la lettre AOT'); gen3.onclick=()=>genAOT(D); b3.appendChild(gen3); c3.appendChild(b3);
+  c3.appendChild(el('div','note','La lettre s\'ouvre dans votre navigateur : Fichier → Imprimer → « Enregistrer au format PDF ».'));
+  v.appendChild(c3);
 }
 
 /* ---------- Liens ---------- */

@@ -11,3 +11,6 @@ dist/
 .DS_Store
 Thumbs.db
 *.log
+
+# pdf-lib recupere au build par la CI
+src/vendor/pdf-lib.min.js
