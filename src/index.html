@@ -305,7 +305,7 @@ function habStatus(d){
 function emptyExploitant(){return {raison:'',forme:'',siret:'',numUAS:'',responsable:'',adresse:'',cp:'',ville:'',tel:'',mail:'',assureur:'',police:'',notes:''};}
 function emptyDossier(){return {
   id:'d'+Date.now()+Math.random().toString(36).slice(2,6),
-  titre:'', date:'', lieu:'', notes:'',
+  titre:'', date:'', lieu:'', notes:'', client:'',
   dateDebut:'', dateFin:'', hauteurMax:'', classeC:'', typeVol:'',
   environnement:'', distanceTiers:'',
   siteAdresse:'', siteCp:'', siteVille:'',
@@ -317,7 +317,7 @@ function emptyDossier(){return {
   prevol:{}, journal:[],
   forms:{regime:'',expType:'morale',derogType:'',aotGestionnaire:'',aotObjet:''}
 };}
-function emptyStore(){return {exploitant:emptyExploitant(),pilotes:[],referent:'',dossiers:[],currentId:''};}
+function emptyStore(){return {exploitant:emptyExploitant(),pilotes:[],referent:'',dossiers:[],currentId:'',logo:''};}
 function normDossier(d){
   const nd=emptyDossier();
   Object.assign(nd,d||{});
@@ -506,6 +506,25 @@ function viewExploitant(v){
   c.appendChild(g);
   c.appendChild(field('Notes',e,'notes',{type:'textarea',rows:2,full:true}));
   v.appendChild(c);
+
+  const lc=card('Image de marque','Logo','Utilisé en en-tête du MANEX et des rapports de mission. Importé une fois, stocké sur ce poste.');
+  const lbar=el('div','row-actions');
+  const imp=el('button','btn primary','⬆ Importer un logo (PNG/JPG)');
+  imp.onclick=()=>{ const inp=document.createElement('input'); inp.type='file'; inp.accept='image/*'; inp.onchange=()=>importLogo(inp.files&&inp.files[0]); inp.click(); };
+  lbar.appendChild(imp);
+  if(store.logo){ const rm=el('button','btn danger','Retirer le logo'); rm.onclick=()=>{store.logo='';scheduleSave();renderView();}; lbar.appendChild(rm); }
+  lc.appendChild(lbar);
+  if(store.logo){ const img=document.createElement('img'); img.src=store.logo; img.style.cssText='max-height:80px;max-width:260px;border:1px solid var(--bord);border-radius:8px;padding:6px;background:#fff'; lc.appendChild(img); }
+  else lc.appendChild(el('div','note','Aucun logo. Importez le vôtre pour personnaliser vos documents.'));
+  v.appendChild(lc);
+}
+function importLogo(file){
+  if(!file)return;
+  if(file.size>2*1048576){ alert('Logo trop lourd (max 2 Mo). Réduisez l\'image.'); return; }
+  const r=new FileReader();
+  r.onload=()=>{ store.logo=r.result; scheduleSave(); renderView(); setSaved('✓ Logo importé'); };
+  r.onerror=()=>alert('Import du logo impossible.');
+  r.readAsDataURL(file);
 }
 
 /* ---------- Télépilotes ---------- */
@@ -667,6 +686,7 @@ function dosMission(v,D){
   const g=el('div','grid');
   g.append(
     field('Intitulé de la mission',D,'titre',{after:()=>{renderNav();}}),
+    field('Client / donneur d\'ordre',D,'client'),
     field('Date',D,'date',{inputType:'date'}),
     field('Lieu / site',D,'lieu',{full:true}),
     field('Début (date & heure)',D,'dateDebut',{inputType:'datetime-local'}),
@@ -1070,11 +1090,110 @@ async function genDossier(D,R){
     openPath(path); setSaved('✓ Dossier de vol généré');
   }catch(e){ alert('Génération impossible : '+e); }
 }
+
+/* En-tête commun (logo + exploitant) pour MANEX et rapports */
+function docHeader(titre,sous){
+  const e=store.exploitant;
+  const adr=[e.adresse,[e.cp,e.ville].filter(Boolean).join(' ')].filter(Boolean).join(', ');
+  const logo=store.logo?'<img src="'+store.logo+'" style="max-height:70px;max-width:230px">':'';
+  return '<div style="display:flex;justify-content:space-between;align-items:flex-start;border-bottom:2px solid #1a3c6e;padding-bottom:12px;margin-bottom:20px">'+
+    '<div>'+logo+'<div style="font-weight:700;color:#1a3c6e;font-size:13pt;margin-top:'+(store.logo?'6px':'0')+'">'+esc(e.raison||'')+'</div>'+
+    '<div style="color:#5a6472;font-size:10pt">'+esc(adr)+'</div>'+
+    '<div style="color:#5a6472;font-size:10pt">'+esc(e.tel||'')+(e.mail?' · '+esc(e.mail):'')+(e.numUAS?' · UAS '+esc(e.numUAS):'')+'</div></div>'+
+    '<div style="text-align:right"><div style="font-size:17pt;font-weight:800;color:#1a3c6e">'+esc(titre)+'</div><div style="color:#5a6472;font-size:11pt">'+esc(sous||'')+'</div></div></div>';
+}
+
+/* ---------- Rapport de mission client ---------- */
+function rapportHTML(D,R){
+  const e=store.exploitant, p=refPilote();
+  const dstart=D.dateDebut?D.dateDebut.replace('T',' à ').replace(/-/g,'/'):(D.date||'—');
+  const css="body{font-family:'Segoe UI',Arial,sans-serif;max-width:820px;margin:22px auto;padding:22px;color:#1f2733;font-size:11.5pt;line-height:1.55}h2{color:#1a3c6e;font-size:12.5pt;margin:20px 0 6px;border-bottom:1px solid #e8f0fb;padding-bottom:3px}.kv{display:flex;gap:10px;margin:2px 0}.kv b{min-width:170px;color:#5a6472;font-weight:600}table{width:100%;border-collapse:collapse;font-size:10.5pt;margin-top:6px}td,th{border:1px solid #d9e0ea;padding:4px 7px;text-align:left}@media print{body{margin:0}}";
+  const kv=(k,val)=>'<div class="kv"><b>'+esc(k)+'</b><span>'+esc(val||'—')+'</span></div>';
+  const journ=(D.journal||[]).map(j=>'<tr><td>'+esc(j.date||'')+'</td><td>'+esc(j.hDebut||'')+'–'+esc(j.hFin||'')+'</td><td>'+esc(j.nbVols||'')+'</td><td>'+esc(j.incidents||'')+'</td></tr>').join('')||'<tr><td colspan="4" style="color:#888">—</td></tr>';
+  const meteo=(D.meteo&&D.meteo.raw)?('Vent '+(D.meteo.wspd!=null?D.meteo.wspd+' kt':'—')+', '+(D.meteo.temp!=null?D.meteo.temp+' °C, ':'')+'catégorie '+(D.meteo.fltCat||'—')):'Conditions évaluées favorables au vol sur site.';
+  return '<!DOCTYPE html><html lang="fr"><head><meta charset="UTF-8"><title>Rapport de mission — '+esc(D.titre||'')+'</title><style>'+css+'</style></head><body>'+
+    docHeader('Rapport de mission',D.titre||'')+
+    kv('Client / donneur d\'ordre',D.client)+kv('Date',D.date||dstart)+kv('Lieu',D.lieu)+
+    '<h2>Prestation réalisée</h2><p>'+esc(D.notes||('Opération par aéronef télépiloté : '+(D.titre||'')))+'</p>'+
+    '<h2>Moyens mis en œuvre</h2>'+kv('Aéronef',((D.appareil.marque||'')+' '+(D.appareil.modele||'')).trim())+kv('N° de série',D.appareil.serie)+kv('Télépilote',((p.prenom||'')+' '+(p.nom||'')).trim())+kv('N° télépilote',p.numTele)+kv('Hauteur max',(D.hauteurMax||'—')+' m')+
+    '<h2>Cadre réglementaire</h2>'+kv('Régime',regimeLabel(D.regime)+(D.sousCategorie?' — '+D.sousCategorie:''))+((D.regime==='sora'&&R.sail)?kv('Niveau SORA','SAIL '+R.sail):'')+kv('Assurance RC',e.assureur||'Souscrite')+
+    '<h2>Conditions</h2><p>'+esc(meteo)+'</p>'+
+    '<h2>Déroulé</h2><table><tr><th>Date</th><th>Horaires</th><th>Vols</th><th>Observations</th></tr>'+journ+'</table>'+
+    '<div style="margin-top:34px;display:flex;justify-content:space-between"><div>Fait à '+esc(D.lieu?D.lieu.split(',').slice(-1)[0].trim():'____')+', le __________</div><div style="text-align:right">'+esc(e.responsable||((p.prenom||'')+' '+(p.nom||'')).trim())+'<br>'+esc(e.raison||'')+'</div></div>'+
+    '<p style="color:#888;font-size:8.5pt;margin-top:24px">Document établi via l\'Assistant Vol Drone. Aéronef et charge ne survolent aucun tiers ; exploitant couvert en responsabilité civile.</p>'+
+    '</body></html>';
+}
+async function genRapport(D,R){
+  try{ const path=await invoke('export_file',{subdir:D.titre||'Mission',filename:'Rapport_de_mission.html',dataB64:b64FromBytes(new TextEncoder().encode(rapportHTML(D,R)))}); openPath(path); setSaved('✓ Rapport généré'); }
+  catch(e){ alert('Génération impossible : '+e); }
+}
+
+/* ---------- Générateur de MANEX (trame pré-remplie) ---------- */
+function fleetFromDossiers(){
+  const seen={}, out=[];
+  store.dossiers.forEach(d=>{ const k=((d.appareil.marque||'')+' '+(d.appareil.modele||'')).trim(); if(k&&!seen[k]){seen[k]=1; out.push({modele:k,masse:d.appareil.masse||'',classe:d.classeC||''});} });
+  return out;
+}
+function manexHTML(){
+  const e=store.exploitant, pilotes=store.pilotes||[], today=new Date().toISOString().slice(0,10);
+  const adr=[e.adresse,[e.cp,e.ville].filter(Boolean).join(' ')].filter(Boolean).join(', ');
+  const TODO='<span style="color:#c05621;font-weight:600">[À compléter / adapter à votre exploitation]</span>';
+  const pilRows=pilotes.map(p=>'<tr><td>'+esc((p.prenom||'')+' '+(p.nom||''))+'</td><td>'+esc(p.numTele||'')+'</td><td>'+esc((p.mentions||[]).join(', '))+'</td><td>'+esc((p.habilitations||[]).map(h=>h.t+(h.d?' (jusqu\'au '+h.d+')':'')).join(' ; '))+'</td></tr>').join('')||'<tr><td colspan="4" style="color:#888">'+esc('Renseignez vos télépilotes')+'</td></tr>';
+  const fleet=fleetFromDossiers();
+  const fleetRows=fleet.map(f=>'<tr><td>'+esc(f.modele)+'</td><td>'+esc(f.classe||'—')+'</td><td>'+esc(f.masse?f.masse+' g':'—')+'</td></tr>').join('')||'<tr><td colspan="3" style="color:#888">'+esc('Aucun appareil enregistré dans vos dossiers')+'</td></tr>';
+  const css="body{font-family:'Segoe UI',Arial,sans-serif;max-width:840px;margin:20px auto;padding:24px;color:#1f2733;font-size:11pt;line-height:1.5}h1{color:#1a3c6e;font-size:16pt;margin:26px 0 6px;border-bottom:2px solid #e8f0fb;padding-bottom:4px}h2{color:#2b6cb0;font-size:12.5pt;margin:16px 0 4px}h3{color:#1f2733;font-size:11pt;margin:12px 0 3px}p{margin:4px 0}table{width:100%;border-collapse:collapse;font-size:10pt;margin:6px 0}td,th{border:1px solid #d9e0ea;padding:4px 7px;text-align:left}.warn{background:#fff7ec;border:1px solid #f3e0c0;border-radius:8px;padding:10px 12px;font-size:10pt;color:#b7791f}@media print{body{margin:0}}";
+  const S=[];
+  S.push('<h1>Manuel d\'exploitation (MANEX)</h1>');
+  S.push('<p><b>'+esc(e.raison||'Exploitant')+'</b> — Exploitant UAS '+esc(e.numUAS||'—')+'</p><p>'+esc(adr)+'</p><p>Édition du '+today+' · Version 1 · '+TODO+'</p>');
+  S.push('<div class="warn">Trame de MANEX pré-remplie avec vos données de référentiel. À relire, compléter et adapter à votre exploitation réelle avant tout usage réglementaire. Elle ne remplace pas un MANEX validé.</div>');
+
+  S.push('<h1>Partie A — Générale</h1>');
+  S.push('<h2>Identification de l\'exploitant</h2>');
+  S.push('<table><tr><td>Raison sociale</td><td>'+esc(e.raison)+'</td></tr><tr><td>SIRET</td><td>'+esc(e.siret)+'</td></tr><tr><td>N° exploitant UAS</td><td>'+esc(e.numUAS)+'</td></tr><tr><td>Adresse</td><td>'+esc(adr)+'</td></tr><tr><td>Responsable / dirigeant</td><td>'+esc(e.responsable)+'</td></tr><tr><td>Contact</td><td>'+esc(e.tel)+' · '+esc(e.mail)+'</td></tr><tr><td>Assurance RC</td><td>'+esc(e.assureur||'')+' '+esc(e.police?('n° '+e.police):'')+'</td></tr></table>');
+  S.push('<h2>Déclarations</h2><h3>Ouverture</h3><p>Le présent manuel décrit l\'organisation et les procédures de l\'exploitant pour la conduite d\'opérations d\'aéronefs sans équipage à bord (UAS), conformément au règlement (UE) 2019/947 et aux textes nationaux applicables.</p><h3>Sécurité et confidentialité</h3><p>La sécurité des personnes et des biens prime sur la réalisation de la mission. Les données recueillies sont traitées de façon confidentielle. '+TODO+'</p><h3>Environnement</h3><p>L\'exploitant limite les nuisances (bruit, dérangement de la faune) et respecte les zones protégées. '+TODO+'</p>');
+  S.push('<h2>Organisation opérationnelle</h2><p>Structure et responsabilités : dirigeant / responsable des opérations : '+esc(e.responsable||TODO)+'. Fonctions de télépilote, d\'entretien et de personnel au sol assurées par le personnel qualifié ci-dessous. '+TODO+'</p>');
+  S.push('<h2>Gestion documentaire</h2><p>Le MANEX est tenu à jour à chaque changement significatif (personnel, matériel, procédures). Les enregistrements de vol et rapports sont conservés au moins 3 ans. Le contrôle des versions est assuré par l\'exploitant.</p>');
+  S.push('<h2>Personnel et qualifications</h2><h3>Télépilotes</h3><table><tr><th>Nom</th><th>N° télépilote</th><th>Mentions</th><th>Habilitations / validités</th></tr>'+pilRows+'</table><p>Aptitude à l\'opération : chaque membre d\'équipage applique le principe « I\'M SAFE » (maladie, médication, stress, alcool, fatigue, émotion) et respecte des temps de repos suffisants avant tout vol.</p>');
+
+  S.push('<h1>Partie B — Procédures</h1>');
+  S.push('<h2>Planification des vols</h2><p>Avant chaque vol : consultation des zones géographiques et restrictions (Géoportail, AlphaTango), des NOTAM (SOFIA), de la météo, et vérification des autorisations éventuelles. Le régime d\'exploitation (Ouverte / STS / PDRA / SORA) est déterminé pour chaque mission.</p>');
+  S.push('<h2>Conditions météorologiques</h2><p>Le vol n\'est engagé que si le vent, la visibilité, le plafond et les précipitations sont compatibles avec les limites de l\'aéronef et de l\'opération. Un relevé METAR/TAF de l\'aérodrome proche est effectué. '+TODO+' (seuils de vent max, visibilité min).</p>');
+  S.push('<h2>Atténuation tactique du risque air (TMPR)</h2><p>Selon le niveau requis : observation visuelle, observateurs d\'espace aérien, coordination, dégagement immédiat en cas d\'aéronef habité. '+TODO+'</p>');
+  S.push('<h2>Rapport d\'incident</h2><p>Tout accident, incident grave ou événement lié à la sécurité est déclaré au BEA et à la DSAC selon les délais réglementaires. Le télépilote consigne les faits et conserve les éléments.</p>');
+  S.push('<h2>Procédures UAS</h2><h3>Inspection avant vol</h3><p>Contrôle de l\'aéronef (cellule, hélices, batteries, capteurs), de la radiocommande, du niveau de charge, des mises à jour, du site et du périmètre. '+TODO+' (check-list détaillée — voir la check-list pré-vol de l\'application).</p><h3>Inspection après vol</h3><p>Contrôle de l\'état de l\'aéronef, relevé du journal de vol, remisage des batteries. '+TODO+'</p>');
+  S.push('<h2>Procédures d\'urgence</h2><p>Conditions météo dégradées inattendues, défaillance UAS, comportement anormal, manœuvres d\'urgence latérale/verticale, perte de lien (retour automatique RTH), apparition d\'un UAS ou d\'un aéronef habité, perte de contrôle, prise de contrôle non autorisée, crash. Pour chacune : action immédiate du télépilote, sécurisation de la zone, information des tiers. '+TODO+' (détaillez chaque procédure selon votre matériel).</p>');
+
+  S.push('<h1>Partie C — Zones de vol</h1>');
+  S.push('<h2>Limites opérationnelles</h2><p>Préparation et délimitation de la zone de vol et de la zone contrôlée au sol, information des tiers, tenue d\'un périmètre de sécurité exempt de tiers. Conditions environnementales (luminosité, vent, visibilité, température) évaluées avant chaque vol.</p>');
+  S.push('<h2>Matériel (parc UAS)</h2><table><tr><th>Aéronef</th><th>Classe C</th><th>Masse</th></tr>'+fleetRows+'</table><p>'+TODO+' (numéros de série, dates d\'entretien, conformité).</p>');
+  S.push('<h2>Autorisation d\'exploitation / ERP local</h2><p>Le cas échéant (catégorie spécifique), référence de l\'autorisation ou de la déclaration, et informations locales du plan d\'intervention d\'urgence propres au site. '+TODO+'</p>');
+
+  S.push('<h1>Partie D — Formation</h1>');
+  S.push('<p>Formation initiale et maintien des compétences des télépilotes : théorique (attestations, CATS), pratique, familiarisation matériel, entraînement aux procédures d\'urgence. Enregistrement des formations et recyclages. '+TODO+'</p>');
+
+  S.push('<h1>Partie E — Plan d\'intervention d\'urgence (ERP)</h1>');
+  S.push('<h2>Général</h2><p>L\'ERP définit la conduite à tenir en cas d\'accident, de blessure ou de dommage. Objectif : limiter les conséquences, alerter les secours, préserver les preuves.</p>');
+  S.push('<h2>Contacts d\'urgence</h2><table><tr><td>Urgences (numéro européen)</td><td>112</td></tr><tr><td>SAMU</td><td>15</td></tr><tr><td>Pompiers</td><td>18</td></tr><tr><td>Gendarmerie / Police</td><td>17</td></tr><tr><td>Préfecture / gestionnaire de site</td><td>'+TODO+'</td></tr><tr><td>Responsable exploitant</td><td>'+esc(e.responsable||'')+' · '+esc(e.tel||'')+'</td></tr></table>');
+  S.push('<h2>Après une situation d\'urgence</h2><p>Sécurisation, information des autorités compétentes, déclaration d\'incident, analyse et mesures correctives. '+TODO+'</p>');
+
+  return '<!DOCTYPE html><html lang="fr"><head><meta charset="UTF-8"><title>MANEX — '+esc(e.raison||'')+'</title><style>'+css+'</style></head><body>'+docHeader('MANEX',e.raison||'')+S.join('')+'<p style="color:#888;font-size:8.5pt;margin-top:26px">Trame générée via l\'Assistant Vol Drone. À relire et compléter ; ne se substitue pas à un MANEX validé.</p></body></html>';
+}
+async function genManex(){
+  if(!store.exploitant.raison){ alert('Renseignez d\'abord l\'exploitant (onglet Exploitant).'); return; }
+  try{ const path=await invoke('export_file',{subdir:'MANEX',filename:'MANEX_trame_'+new Date().toISOString().slice(0,10)+'.html',dataB64:b64FromBytes(new TextEncoder().encode(manexHTML()))}); openPath(path); setSaved('✓ Trame MANEX générée'); }
+  catch(e){ alert('Génération impossible : '+e); }
+}
 function dosDocs(v,D,R){
   v.appendChild(el('h1','page-h','Dossier & formulaires')); // léger doublon volontaire du titre de section
   const c0=card('Dossier de vol','Document complet à présenter','Rassemble exploitant, télépilote, appareil, mission, régime & conformité, check-list pré-vol et journal. Ouvre dans le navigateur : Imprimer → Enregistrer en PDF.');
   const b0=el('div','row-actions'); const g0=el('button','btn primary','📄 Générer le dossier de vol'); g0.onclick=()=>genDossier(D,R); b0.appendChild(g0); c0.appendChild(b0);
   v.appendChild(c0);
+
+  const cr=card('Client','Rapport de mission','Document orienté client (en-tête avec votre logo, prestation réalisée, moyens, conditions, déroulé), à envoyer après la mission.');
+  const br=el('div','row-actions'); const gr=el('button','btn primary','🧾 Générer le rapport de mission'); gr.onclick=()=>genRapport(D,R); br.appendChild(gr); cr.appendChild(br);
+  if(!store.logo) cr.appendChild(el('div','note','Astuce : importez votre logo dans l\'onglet Exploitant pour l\'afficher en en-tête.'));
+  v.appendChild(cr);
+
   // Formulaires officiels (pertinents surtout en spécifique / vol en agglo)
   dosForms(v,D,R);
 }
@@ -1472,6 +1591,11 @@ function viewDocs(v){
   const list=el('div'); list.id='docslist'; list.appendChild(el('div','note','Chargement…')); c.appendChild(list);
   v.appendChild(c);
   loadDocsList();
+
+  const mc=card('MANEX','Générer une trame de MANEX','Produit un manuel d\'exploitation pré-rempli avec votre référentiel (exploitant, télépilotes, matériel, contacts), suivant le plan standard parties A à E. À relire et adapter : c\'est un point de départ, pas un MANEX validé.');
+  const mbar=el('div','row-actions'); const gm=el('button','btn primary','📘 Générer la trame MANEX'); gm.onclick=genManex; mbar.appendChild(gm); mc.appendChild(mbar);
+  mc.appendChild(el('div','note','Votre MANEX abouti reste votre référence : importez-le ci-dessus pour le garder à portée en contrôle.'));
+  v.appendChild(mc);
 
   const sb=card('Sécurité','Sauvegarde des données','Exportez toutes vos données (exploitant, télépilotes, dossiers) dans un fichier, à conserver ou à réimporter sur un autre poste. Les mises à jour de l\'application ne touchent pas vos données.');
   const sbar=el('div','row-actions');
