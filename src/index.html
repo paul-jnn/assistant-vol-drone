@@ -1305,18 +1305,31 @@ const LIENS=[
   {ic:'🗺',t:'Windy',u:'https://www.windy.com/',d:'Vent en altitude'},
   {ic:'🏛',t:'DGAC — Catégorie ouverte',u:'https://www.ecologie.gouv.fr/politiques-publiques/exploitation-drones-categorie-ouverte',d:'Réglementation'},
 ];
-function viewLiens(v){
-  v.appendChild(el('h1','page-h','Liens & contacts'));
-  v.appendChild(el('p','page-sub','Accès rapide aux ressources officielles de préparation de vol.'));
-  const c=card('Ressources','Liens utiles','Ouverts dans votre navigateur par défaut.');
+const MARCHES=[
+  {ic:'🔎',t:'France Marchés — drone',u:'https://www.francemarches.com/appels-offre/drone',d:'Appels d\'offres pré-filtrés « drone »'},
+  {ic:'🔎',t:'Centrale des marchés — drone',u:'https://centraledesmarches.com/recherche/drone',d:'Recherche « drone »'},
+  {ic:'🔎',t:'e-marchés publics — drone',u:'https://www.e-marchespublics.com/appel-offre/drone',d:'Appels d\'offres « drone »'},
+  {ic:'🏛',t:'BOAMP (officiel)',u:'https://www.boamp.fr/',d:'Bulletin officiel des marchés publics'},
+  {ic:'🏛',t:'PLACE — Achats de l\'État',u:'https://www.marches-publics.gouv.fr/',d:'Plateforme des marchés de l\'État'},
+  {ic:'🇪🇺',t:'TED — Union européenne',u:'https://ted.europa.eu/',d:'Marchés publics européens'},
+];
+function linkCard(kick,title,desc,items){
+  const c=card(kick,title,desc);
   const list=el('div','linklist');
-  LIENS.forEach(l=>{
+  items.forEach(l=>{
     const a=el('a');
     a.innerHTML='<span class="ic">'+l.ic+'</span><span>'+l.t+'<small>'+l.d+'</small></span>';
     a.onclick=e=>{e.preventDefault();openExternal(l.u);};
     list.appendChild(a);
   });
-  c.appendChild(list);v.appendChild(c);
+  c.appendChild(list);
+  return c;
+}
+function viewLiens(v){
+  v.appendChild(el('h1','page-h','Liens & contacts'));
+  v.appendChild(el('p','page-sub','Accès rapide aux ressources officielles de préparation de vol et aux appels d\'offres.'));
+  v.appendChild(linkCard('Ressources','Liens utiles','Ouverts dans votre navigateur par défaut.',LIENS));
+  v.appendChild(linkCard('Business','Marchés publics & appels d\'offres','Prestations drone dans la commande publique. Les trois premiers ouvrent directement une liste filtrée « drone ».',MARCHES));
 }
 
 function viewSoon(v){
