@@ -245,29 +245,30 @@ const REQTXT={'L':'Faible (L)','M':'Moyen (M)','H':'Haut (H)','-':'Non requis'};
 
 /* ========== BASE DE RÉFÉRENCE DRONES DJI ========== */
 /* dim = dimension caractéristique max (m) · vit = vitesse horizontale max (m/s) · masse = masse au décollage (g). Specs constructeur, vérifiables. */
+/* c = classe C (marquage CE) usuelle ; à vérifier sur le marquage réel du drone. '' = hors classe / legacy */
 const DJI_DB=[
-  {key:'mini4pro',  cat:'Grand public', modele:'Mini 4 Pro',            dim:0.30, vit:16, masse:249},
-  {key:'mini3pro',  cat:'Grand public', modele:'Mini 3 Pro',            dim:0.25, vit:16, masse:249},
-  {key:'air3s',     cat:'Grand public', modele:'Air 3S',                dim:0.33, vit:19, masse:724},
-  {key:'air3',      cat:'Grand public', modele:'Air 3',                 dim:0.33, vit:19, masse:720},
-  {key:'mavic3',    cat:'Grand public', modele:'Mavic 3',               dim:0.38, vit:19, masse:895},
-  {key:'mavic3pro', cat:'Grand public', modele:'Mavic 3 Pro',           dim:0.38, vit:21, masse:958},
-  {key:'mavic3e',   cat:'Entreprise',   modele:'Mavic 3E (Enterprise)', dim:0.38, vit:21, masse:915},
-  {key:'mavic3t',   cat:'Entreprise',   modele:'Mavic 3T (Thermal)',    dim:0.38, vit:21, masse:920},
-  {key:'mavic3m',   cat:'Entreprise',   modele:'Mavic 3M (Multispec.)', dim:0.38, vit:21, masse:980},
-  {key:'m30',       cat:'Entreprise',   modele:'Matrice 30',            dim:0.67, vit:23, masse:3770},
-  {key:'m30t',      cat:'Entreprise',   modele:'Matrice 30T',           dim:0.67, vit:23, masse:3770},
-  {key:'m300',      cat:'Entreprise',   modele:'Matrice 300 RTK',       dim:0.90, vit:23, masse:6300},
-  {key:'m350',      cat:'Entreprise',   modele:'Matrice 350 RTK',       dim:0.90, vit:23, masse:6470},
-  {key:'flycart30', cat:'Lourd / cargo',modele:'FlyCart 30',            dim:3.09, vit:12, masse:42500},
-  {key:'flycart100',cat:'Lourd / cargo',modele:'FlyCart 100',           dim:3.22, vit:20, masse:55200},
-  {key:'agrast40',  cat:'Agricole',     modele:'Agras T40',             dim:3.00, vit:10, masse:38000},
-  {key:'agrast50',  cat:'Agricole',     modele:'Agras T50',             dim:3.09, vit:10, masse:39900},
+  {key:'mini4pro',  cat:'Grand public', modele:'Mini 4 Pro',            dim:0.30, vit:16, masse:249,   c:'C0'},
+  {key:'mini3pro',  cat:'Grand public', modele:'Mini 3 Pro',            dim:0.25, vit:16, masse:249,   c:'C0'},
+  {key:'air3s',     cat:'Grand public', modele:'Air 3S',                dim:0.33, vit:19, masse:724,   c:'C1'},
+  {key:'air3',      cat:'Grand public', modele:'Air 3',                 dim:0.33, vit:19, masse:720,   c:'C1'},
+  {key:'mavic3',    cat:'Grand public', modele:'Mavic 3',               dim:0.38, vit:19, masse:895,   c:'C1'},
+  {key:'mavic3pro', cat:'Grand public', modele:'Mavic 3 Pro',           dim:0.38, vit:21, masse:958,   c:'C1'},
+  {key:'mavic3e',   cat:'Entreprise',   modele:'Mavic 3E (Enterprise)', dim:0.38, vit:21, masse:915,   c:'C2'},
+  {key:'mavic3t',   cat:'Entreprise',   modele:'Mavic 3T (Thermal)',    dim:0.38, vit:21, masse:920,   c:'C2'},
+  {key:'mavic3m',   cat:'Entreprise',   modele:'Mavic 3M (Multispec.)', dim:0.38, vit:21, masse:980,   c:'C2'},
+  {key:'m30',       cat:'Entreprise',   modele:'Matrice 30',            dim:0.67, vit:23, masse:3770,  c:''},
+  {key:'m30t',      cat:'Entreprise',   modele:'Matrice 30T',           dim:0.67, vit:23, masse:3770,  c:''},
+  {key:'m300',      cat:'Entreprise',   modele:'Matrice 300 RTK',       dim:0.90, vit:23, masse:6300,  c:''},
+  {key:'m350',      cat:'Entreprise',   modele:'Matrice 350 RTK',       dim:0.90, vit:23, masse:6470,  c:''},
+  {key:'flycart30', cat:'Lourd / cargo',modele:'FlyCart 30',            dim:3.09, vit:12, masse:42500, c:''},
+  {key:'flycart100',cat:'Lourd / cargo',modele:'FlyCart 100',           dim:3.22, vit:20, masse:55200, c:''},
+  {key:'agrast40',  cat:'Agricole',     modele:'Agras T40',             dim:3.00, vit:10, masse:38000, c:''},
+  {key:'agrast50',  cat:'Agricole',     modele:'Agras T50',             dim:3.09, vit:10, masse:39900, c:''},
 ];
 function djiFind(k){return DJI_DB.find(d=>d.key===k);}
 
-/* Mentions / qualifications drone (cases à cocher) */
-const MENTIONS=['A1','A2','A3','STS-01','STS-02','S-1','S-2','S-3','CATT','CATS'];
+/* Mentions / qualifications drone (cases à cocher). Scénarios nationaux S-1/S-2/S-3 caducs depuis le 01/01/2026. */
+const MENTIONS=['A1','A2','A3','STS-01','STS-02','CATS'];
 /* Statut d'une date de validité d'habilitation */
 function habStatus(d){
   if(!d) return null;
@@ -285,9 +286,12 @@ function emptyDossier(){return {
   id:'d'+Date.now()+Math.random().toString(36).slice(2,6),
   titre:'', date:'', lieu:'', notes:'',
   dateDebut:'', dateFin:'', hauteurMax:'', classeC:'', typeVol:'',
+  environnement:'', distanceTiers:'',
+  regime:'', sousCategorie:'', pdra:'',
   appareil:{key:'',marque:'',modele:'',masse:'',serie:''},
   grc:{dim:'',vit:'',densite:'',mini:false,m1a:'none',m1b:'none',m1c:'none',m2:'none'},
   arc:{atypical:'',fl600:'',airport:'',airportClass:'',above500:'',adsb:'',eac:'',urban:'',residual:'',reduceJust:'',tacJust:''},
+  prevol:{}, journal:[],
   forms:{regime:'',expType:'morale',derogType:'',aotGestionnaire:'',aotObjet:''}
 };}
 function emptyStore(){return {exploitant:emptyExploitant(),pilotes:[],referent:'',dossiers:[],currentId:''};}
@@ -309,6 +313,8 @@ function normDossier(d){
   nd.grc=Object.assign(emptyDossier().grc,d&&d.grc||{});
   nd.arc=Object.assign(emptyDossier().arc,d&&d.arc||{});
   nd.forms=Object.assign(emptyDossier().forms,d&&d.forms||{});
+  nd.prevol=Object.assign({},d&&d.prevol||{});
+  if(!Array.isArray(nd.journal))nd.journal=[];
   return nd;
 }
 function normalize(raw){
@@ -583,7 +589,11 @@ function viewDossiers(v){
     const bits=[d.date,d.lieu,d.appareil.modele?('DJI '+d.appareil.modele):(d.appareil.marque?d.appareil.marque+' '+d.appareil.modele:'')].filter(Boolean).join(' · ');
     info.appendChild(el('small',null,bits||'—'));
     c.appendChild(info);
-    c.appendChild(el('div','sail'+(R.sail?'':' empty'),R.sail?(R.sail==='CERT'?'CERT':'SAIL '+R.sail):'SAIL —'));
+    let badge;
+    if(!d.regime) badge=el('div','sail empty','Régime ?');
+    else if(d.regime==='sora') badge=el('div','sail'+(R.sail?'':' empty'),R.sail?(R.sail==='CERT'?'CERT':'SAIL '+R.sail):'SORA');
+    else badge=el('div','sail',regimeShort(d.regime)+(d.sousCategorie?' '+d.sousCategorie:''));
+    c.appendChild(badge);
     const acts=el('div','acts');
     const dup=el('button',null,'⧉');dup.title='Dupliquer';
     dup.onclick=e=>{e.stopPropagation();const n=normDossier(JSON.parse(JSON.stringify(d)));n.id=emptyDossier().id;n.titre=(d.titre||'Mission')+' (copie)';store.dossiers.unshift(n);scheduleSave();renderView();};
@@ -596,6 +606,18 @@ function viewDossiers(v){
 }
 
 /* ---------- Dossier (détail) ---------- */
+function regimeLabel(r){return {open:'Catégorie ouverte',sts:'Catégorie spécifique — STS',pdra:'Catégorie spécifique — PDRA',sora:'Catégorie spécifique — SORA'}[r]||'Régime à définir';}
+function regimeShort(r){return {open:'OPEN',sts:'STS',pdra:'PDRA',sora:'SORA'}[r]||'—';}
+function nextStepFor(r){return {open:'confopen',sts:'confsts',pdra:'confpdra',sora:'grc'}[r]||'mission';}
+function dossierSteps(D){
+  const s=[['mission','Mission & appareil'],['regime','Régime']];
+  if(D.regime==='open') s.push(['confopen','Conformité ouverte']);
+  else if(D.regime==='sts') s.push(['confsts','Conformité STS']);
+  else if(D.regime==='pdra') s.push(['confpdra','Conformité PDRA']);
+  else if(D.regime==='sora') s.push(['grc','Risque sol'],['arc','Risque air'],['sail','SAIL & OSO']);
+  s.push(['prevol','Check-list pré-vol'],['journal','Journal'],['docs','Dossier & formulaires']);
+  return s;
+}
 function viewDossier(v){
   const D=curDossier();
   if(!D){ current='dossiers'; return viewDossiers(v); }
@@ -604,22 +626,25 @@ function viewDossier(v){
   back.onclick=()=>{current='dossiers';renderNav();renderView();};
   v.appendChild(back);
   v.appendChild(el('h1','page-h',D.titre||'Mission'));
-  v.appendChild(el('p','page-sub','Analyse SORA 2.5 de la mission. Enregistrement automatique.'));
-  v.appendChild(summaryBar(R));
+  v.appendChild(el('p','page-sub',regimeLabel(D.regime)+' · enregistrement automatique.'));
 
-  const steps=el('div','steps');
-  [['mission','Mission & appareil'],['grc','1·2·3 — Risque sol'],['arc','4·5·6 — Risque air'],['sail','7·10 — SAIL & OSO'],['form','Formulaires']].forEach(s=>{
-    const b=el('button',soraStep===s[0]?'on':'',s[1]);
-    b.onclick=()=>{soraStep=s[0];renderView();};
-    steps.appendChild(b);
-  });
-  v.appendChild(steps);
+  const steps=dossierSteps(D);
+  if(!steps.some(s=>s[0]===soraStep)) soraStep='mission';
+  const bar=el('div','steps');
+  steps.forEach(s=>{ const b=el('button',soraStep===s[0]?'on':'',s[1]); b.onclick=()=>{soraStep=s[0];renderView();}; bar.appendChild(b); });
+  v.appendChild(bar);
 
   if(soraStep==='mission') dosMission(v,D);
-  else if(soraStep==='grc') soraGRC(v,D,R);
-  else if(soraStep==='arc') soraARC(v,D,R);
-  else if(soraStep==='sail') soraSAIL(v,D,R);
-  else dosForms(v,D,R);
+  else if(soraStep==='regime') dosRegime(v,D);
+  else if(soraStep==='confopen') dosConfOpen(v,D);
+  else if(soraStep==='confsts') dosConfSTS(v,D);
+  else if(soraStep==='confpdra') dosConfPDRA(v,D);
+  else if(soraStep==='grc'){ v.appendChild(summaryBar(R)); soraGRC(v,D,R); }
+  else if(soraStep==='arc'){ v.appendChild(summaryBar(R)); soraARC(v,D,R); }
+  else if(soraStep==='sail'){ v.appendChild(summaryBar(R)); soraSAIL(v,D,R); }
+  else if(soraStep==='prevol') dosPrevol(v,D);
+  else if(soraStep==='journal') dosJournal(v,D);
+  else dosDocs(v,D,R);
 }
 
 function dosMission(v,D){
@@ -631,11 +656,14 @@ function dosMission(v,D){
     field('Lieu / site',D,'lieu',{full:true}),
     field('Début (date & heure)',D,'dateDebut',{inputType:'datetime-local'}),
     field('Fin (date & heure)',D,'dateFin',{inputType:'datetime-local'}),
-    field('Hauteur max de vol (m)',D,'hauteurMax'),
-    field('Classe C (marquage UAS)',D,'classeC',{type:'select',options:[['','—'],['C0','C0'],['C1','C1'],['C2','C2'],['C3','C3'],['C4','C4'],['C5','C5'],['C6','C6'],['sans','Sans marquage / hors classe']]}),
-    field('Type de vol',D,'typeVol',{type:'select',options:[['','—'],['VLOS','VLOS (vue directe)'],['EVLOS','EVLOS'],['BVLOS','BVLOS (hors vue)']]}),
+    field('Hauteur max de vol (m)',D,'hauteurMax',{after:()=>renderNav()}),
+    field('Classe C (marquage UAS)',D,'classeC',{type:'select',after:()=>renderNav(),options:[['','—'],['C0','C0'],['C1','C1'],['C2','C2'],['C3','C3'],['C4','C4'],['C5','C5'],['C6','C6'],['sans','Sans marquage / hors classe']]}),
+    field('Type de vol',D,'typeVol',{type:'select',after:()=>renderNav(),options:[['','—'],['VLOS','VLOS (vue directe)'],['EVLOS','EVLOS'],['BVLOS','BVLOS (hors vue)']]}),
+    field('Environnement survolé',D,'environnement',{type:'select',options:[['','—'],['controlee','Zone contrôlée au sol (tiers exclus)'],['peupeuple','Zone peu peuplée / rurale'],['agglo','Agglomération / zone peuplée'],['rassemblement','Rassemblement de personnes']]}),
+    field('Distance aux tiers',D,'distanceTiers',{type:'select',options:[['','—'],['exclus','Aucun tiers (zone d\'exclusion)'],['150m','≥ 150 m des zones habitées'],['30m','≥ 30 m des tiers'],['5m','≥ 5 m (basse vitesse)'],['survol','Survol de tiers possible']]}),
   );
   c.appendChild(g);
+  c.appendChild(el('div','note','La classe C du drone, le type de vol, l\'environnement et la distance aux tiers servent à recommander le régime (onglet Régime).'));
   c.appendChild(field('Notes de mission',D,'notes',{type:'textarea',rows:2,full:true}));
   v.appendChild(c);
 
@@ -671,12 +699,236 @@ function applyModel(D){
     D.appareil.marque='DJI'; D.appareil.modele=d.modele; D.appareil.masse=String(d.masse);
     D.grc.dim=String(d.dim); D.grc.vit=String(d.vit);
     D.grc.mini = (d.masse<250 && d.vit<=25);
+    if(d.c) D.classeC=d.c;
   } else if(D.appareil.key==='manuel'){
     D.appareil.marque=D.appareil.marque||''; D.appareil.modele=D.appareil.modele||'';
   } else {
     D.appareil.marque='';D.appareil.modele='';D.appareil.masse='';D.grc.dim='';D.grc.vit='';
   }
   scheduleSave(); renderNav(); renderView();
+}
+
+/* ---------- Régime : recommandation ---------- */
+function recommendRegime(D){
+  const c=D.classeC, bvlos=(D.typeVol==='BVLOS'), h=parseFloat(D.hauteurMax)||0, env=D.environnement, dist=D.distanceTiers;
+  const m=parseFloat(D.appareil.masse)||0;
+  const openClass=['C0','C1','C2','C3','C4'].includes(c);
+  const heightOk=(!h||h<=120);
+  let missing='';
+  if(!c) missing='Renseignez la classe C du drone (onglet Mission & appareil) pour fiabiliser la recommandation.';
+  else if(!D.typeVol) missing='Renseignez le type de vol (VLOS / BVLOS) dans l\'onglet Mission.';
+  else if(!env) missing='Renseignez l\'environnement survolé dans l\'onglet Mission.';
+  if(!bvlos && heightOk && openClass && env!=='rassemblement' && m<25000){
+    let sub, why;
+    if(c==='C0'||c==='C1'){ sub='A1'; why='Drone '+c+', vol en vue et ≤ 120 m : la sous-catégorie A1 convient (pas de survol intentionnel de tiers, jamais de rassemblement).'; }
+    else if(c==='C2' && (dist==='30m'||dist==='5m')){ sub='A2'; why='Drone C2 avec distance de sécurité aux tiers (30 m, ou 5 m en basse vitesse) : sous-catégorie A2 (examen A2 requis).'; }
+    else { sub='A3'; why='Drone '+c+' tenu à distance des zones habitées (≥ 150 m) et sans tiers : sous-catégorie A3.'; }
+    return {regime:'open', sub, why, missing};
+  }
+  if(!bvlos && c==='C5' && heightOk) return {regime:'sts', sub:'STS-01', why:'Vol en vue au-dessus d\'une zone au sol contrôlée (même peuplée), drone C5, ≤ 120 m : scénario standard STS-01 (déclaration).', missing};
+  if(bvlos && c==='C6') return {regime:'sts', sub:'STS-02', why:'Vol hors vue avec observateurs en zone peu peuplée, drone C6 : scénario standard STS-02 (déclaration).', missing};
+  if(bvlos) return {regime:'pdra', why:'Vol hors vue sans drone C6 : vérifiez si un PDRA (hors vue en zone peu peuplée, inspection à faible hauteur…) couvre le concept ; sinon SORA.', missing};
+  return {regime:'sora', why:'Opération hors scénario standard et hors PDRA courant : analyse SORA requise (autorisation d\'exploitation).', missing};
+}
+function dosRegime(v,D){
+  const rec=recommendRegime(D);
+  const c=card('Régime d\'exploitation','Quel cadre pour cette mission ?','L\'assistant propose le régime le plus adapté d\'après les infos de base. Vous gardez le choix final.');
+  const box=el('div','result');
+  const left=el('div'); left.innerHTML='<div class="big">'+regimeShort(rec.regime)+'</div><div class="lbl">Recommandé</div>';
+  const right=el('div'); right.style.cssText='border-left:1px solid #cfe0f6;padding-left:14px;flex:1';
+  right.innerHTML='<b>'+regimeLabel(rec.regime)+(rec.sub?' — '+rec.sub:'')+'</b><div style="color:var(--gris);font-size:13px;margin-top:4px">'+rec.why+'</div>';
+  box.append(left,right); c.appendChild(box);
+  if(rec.missing) c.appendChild(el('div','warn',rec.missing));
+  c.appendChild(el('div','fieldlabel','Régime retenu'));
+  const choices=[['open','Catégorie ouverte'],['sts','Spécifique — STS'],['pdra','Spécifique — PDRA'],['sora','Spécifique — SORA']];
+  const chips=el('div','chips');
+  choices.forEach(ch=>{
+    const on=D.regime===ch[0], isReco=rec.regime===ch[0];
+    const chip=el('button','chip'+(on?' on':''),ch[1]+(isReco?' ★':''));
+    chip.onclick=()=>{ D.regime=ch[0]; if(ch[0]==='open'&&!D.sousCategorie)D.sousCategorie=rec.sub||''; scheduleSave(); soraStep=nextStepFor(ch[0]); renderView(); };
+    chips.appendChild(chip);
+  });
+  c.appendChild(chips);
+  c.appendChild(el('div','note','★ = recommandation. Cliquez un régime pour ouvrir son module d\'analyse. En catégorie spécifique, STS = déclaration, PDRA et SORA = autorisation d\'exploitation.'));
+  v.appendChild(c);
+}
+
+/* ---------- Conformité catégorie ouverte ---------- */
+const OPEN_RULES={
+  A1:'A1 — drones C0 (< 250 g) ou C1 (< 900 g). C0 : survol de personnes isolées toléré. C1 : pas de survol intentionnel de tiers. Jamais au-dessus de rassemblements. ≤ 120 m, VLOS.',
+  A2:'A2 — drone C2 (< 4 kg). Distance horizontale ≥ 30 m des tiers (5 m en mode basse vitesse). Examen théorique A2 requis. ≤ 120 m, VLOS.',
+  A3:'A3 — drones C2, C3 ou C4 (< 25 kg). ≥ 150 m des zones résidentielles, commerciales, industrielles ou récréatives, aucun tiers dans la zone. ≤ 120 m, VLOS.'
+};
+function openConformite(D){
+  const c=D.classeC, sub=D.sousCategorie, h=parseFloat(D.hauteurMax)||0, env=D.environnement, dist=D.distanceTiers, m=parseFloat(D.appareil.masse)||0;
+  const issues=[];
+  if(D.typeVol==='BVLOS') issues.push('La catégorie ouverte impose le vol en vue directe (VLOS).');
+  if(h>120) issues.push('Hauteur > 120 m : hors catégorie ouverte (dérogation préfectorale, sinon spécifique).');
+  if(env==='rassemblement') issues.push('Survol de rassemblement de personnes : interdit en catégorie ouverte.');
+  if(m>=25000) issues.push('Masse ≥ 25 kg : hors catégorie ouverte.');
+  if(sub==='A1'){
+    if(!['C0','C1'].includes(c)) issues.push('A1 exige un drone C0 ou C1 (actuel : '+(c||'non renseigné')+').');
+    if(c==='C1' && dist==='survol') issues.push('A1 / C1 : pas de survol intentionnel de tiers.');
+  } else if(sub==='A2'){
+    if(c!=='C2') issues.push('A2 exige un drone C2 (actuel : '+(c||'non renseigné')+').');
+    if(!(dist==='30m'||dist==='5m'||dist==='150m'||dist==='exclus')) issues.push('A2 : tenir ≥ 30 m des tiers (5 m en basse vitesse).');
+  } else if(sub==='A3'){
+    if(!['C2','C3','C4'].includes(c)) issues.push('A3 admet C2, C3 ou C4 (actuel : '+(c||'non renseigné')+').');
+    if(!(dist==='150m'||dist==='exclus')) issues.push('A3 : ≥ 150 m des zones habitées et aucun tiers dans la zone.');
+  } else {
+    issues.push('Choisissez la sous-catégorie A1, A2 ou A3.');
+  }
+  return issues;
+}
+function dosConfOpen(v,D){
+  const c=card('Catégorie ouverte','Conformité de l\'exploitation','Vérifie que la sous-catégorie A1/A2/A3 est cohérente avec le drone et les conditions de vol.');
+  c.appendChild(field('Sous-catégorie',D,'sousCategorie',{type:'select',after:()=>renderView(),options:[['','—'],['A1','A1'],['A2','A2'],['A3','A3']]}));
+  if(D.sousCategorie) c.appendChild(el('div','note',OPEN_RULES[D.sousCategorie]));
+  const issues=openConformite(D);
+  if(issues.length===0 && D.sousCategorie){
+    const ok=el('div','result'); ok.style.background='var(--vert-clair)'; ok.style.borderColor='#bfe3cd';
+    ok.innerHTML='<div><div class="big" style="color:var(--vert)">✓</div><div class="lbl">Conforme</div></div><div style="border-left:1px solid #bfe3cd;padding-left:14px;flex:1"><b>Exploitation conforme à la sous-catégorie '+D.sousCategorie+'</b><div style="color:var(--gris);font-size:13px;margin-top:4px">Vérifiez tout de même l\'enregistrement exploitant (AlphaTango), la formation télépilote et l\'assurance.</div></div>';
+    c.appendChild(ok);
+  } else {
+    issues.forEach(i=>c.appendChild(el('div','warn',i)));
+  }
+  v.appendChild(c);
+}
+
+/* ---------- Conformité STS ---------- */
+const STS_RULES={
+  'STS-01':'STS-01 (déclaration) — vol EN VUE (VLOS) au-dessus d\'une zone au sol contrôlée, y compris en environnement peuplé. Drone de classe C5, hauteur ≤ 120 m, distance de sécurité au sol maîtrisée. Télépilote : théorique CATS + pratique.',
+  'STS-02':'STS-02 (déclaration) — vol HORS VUE (BVLOS) en zone peu peuplée, avec observateurs de l\'espace aérien. Drone de classe C6, hauteur ≤ 120 m, portée et espacement définis. Télépilote : théorique CATS + pratique.'
+};
+function dosConfSTS(v,D){
+  const c=card('Catégorie spécifique — STS','Scénario standard européen','Les STS relèvent d\'une déclaration à la DGAC (pas d\'autorisation). Le drone doit porter le marquage de classe requis.');
+  c.appendChild(field('Scénario',D,'sousCategorie',{type:'select',after:()=>renderView(),options:[['','—'],['STS-01','STS-01 (VLOS, C5)'],['STS-02','STS-02 (BVLOS, C6)']]}));
+  if(D.sousCategorie && STS_RULES[D.sousCategorie]){
+    c.appendChild(el('div','note',STS_RULES[D.sousCategorie]));
+    const need=D.sousCategorie==='STS-01'?'C5':'C6';
+    if(D.classeC && D.classeC!==need) c.appendChild(el('div','warn','Ce scénario exige un drone '+need+' (drone actuel : '+D.classeC+'). Sans le marquage requis, passez par un PDRA ou un SORA.'));
+    c.appendChild(el('div','warn','Déclaration à déposer via AlphaTango, avec MANEX et attestation de conformité au scénario. Vérifiez les conditions détaillées sur la fiche officielle du scénario.'));
+  }
+  v.appendChild(c);
+}
+
+/* ---------- Conformité PDRA ---------- */
+const PDRA_LIST=[['','—'],
+  ['PDRA-S01','PDRA-S01 — hors vue, zone peu peuplée (≤ 120 m)'],
+  ['PDRA-S02','PDRA-S02 — hors vue, zone peu peuplée, réservé/ségrégué'],
+  ['PDRA-G01','PDRA-G01 — vue directe, zone peu peuplée'],
+  ['PDRA-G02','PDRA-G02 — hors vue à faible hauteur, zone peu peuplée'],
+  ['PDRA-G03','PDRA-G03 — hors vue en espace aérien contrôlé']];
+function dosConfPDRA(v,D){
+  const c=card('Catégorie spécifique — PDRA','Scénario de risque prédéfini','Le PDRA est une analyse de risque prête à l\'emploi (méthode SORA pré-instruite). Il donne lieu à une demande d\'autorisation d\'exploitation, plus légère qu\'un SORA complet.');
+  c.appendChild(field('PDRA visé',D,'pdra',{type:'select',after:()=>renderView(),options:PDRA_LIST}));
+  if(D.pdra){
+    c.appendChild(el('div','note','Vous devez respecter l\'intégralité des conditions du '+D.pdra+' (drone, environnement, hauteur, compétences, procédures) telles que publiées par la DGAC/EASA, et déposer une demande d\'autorisation d\'exploitation avec MANEX.'));
+    c.appendChild(el('div','warn','Vérifiez la fiche officielle du '+D.pdra+' : les conditions exactes priment sur ce résumé. Si votre opération n\'entre dans aucun PDRA, basculez sur le régime SORA.'));
+  }
+  v.appendChild(c);
+}
+
+/* ---------- Check-list pré-vol ---------- */
+const PREVOL=[
+  ['notam','NOTAM consultés (SOFIA) — pas de restriction bloquante'],
+  ['zones','Zones & restrictions vérifiées (Géoportail / AlphaTango)'],
+  ['meteo','Météo compatible (vent, visibilité, plafond, précipitations)'],
+  ['autorisations','Autorisations obtenues si requises (préfecture, gestionnaire de site)'],
+  ['perimetre','Périmètre de sécurité / zone d\'exclusion défini'],
+  ['tiers','Gestion des tiers / information du public'],
+  ['materiel','État du matériel vérifié (drone, hélices, capteurs)'],
+  ['batteries','Batteries chargées et contrôlées'],
+  ['assurance','Assurance RC en cours de validité'],
+  ['docs','Documents disponibles (attestation télépilote, enregistrement exploitant)'],
+  ['urgence','Procédures d\'urgence / retour automatique (RTH) revues'],
+  ['brief','Briefing équipage effectué'],
+];
+function dosPrevol(v,D){
+  const c=card('Préparation','Check-list pré-vol','À cocher avant décollage. L\'état est repris dans le dossier de vol PDF.');
+  const done=PREVOL.filter(it=>D.prevol[it[0]]).length;
+  c.appendChild(el('div','note',done+' / '+PREVOL.length+' points validés.'));
+  PREVOL.forEach(it=>{
+    const row=el('label','ynrow'); row.style.cursor='pointer';
+    const cb=document.createElement('input'); cb.type='checkbox'; cb.checked=!!D.prevol[it[0]];
+    cb.onchange=()=>{ D.prevol[it[0]]=cb.checked; scheduleSave(); renderView(); };
+    row.append(el('div','q',it[1]),cb);
+    c.appendChild(row);
+  });
+  c.appendChild(field('Observations pré-vol (météo relevée, particularités du site…)',D.prevol,'_note',{type:'textarea',rows:2,full:true}));
+  v.appendChild(c);
+}
+
+/* ---------- Journal après-vol ---------- */
+function dosJournal(v,D){
+  const c=card('Après-vol','Journal de vol','Enregistrez chaque session : horaires, nombre de vols, incidents éventuels.');
+  const bar=el('div','row-actions');
+  const add=el('button','btn primary','＋ Ajouter une session');
+  add.onclick=()=>{ D.journal.unshift({date:(D.date||new Date().toISOString().slice(0,10)),hDebut:'',hFin:'',nbVols:'',incidents:''}); scheduleSave(); renderView(); };
+  bar.appendChild(add); c.appendChild(bar);
+  if(D.journal.length===0) c.appendChild(el('div','note','Aucune session enregistrée.'));
+  D.journal.forEach((j,idx)=>{
+    const box=el('div','pilote');
+    const head=el('div','head');
+    head.appendChild(el('h3',null,'Session '+(D.journal.length-idx)+(j.date?' — '+j.date:'')));
+    const del=el('button','btn danger sm','🗑 Supprimer'); del.onclick=()=>{ D.journal.splice(idx,1); scheduleSave(); renderView(); };
+    head.appendChild(del); box.appendChild(head);
+    const g=el('div','grid');
+    g.append(
+      field('Date',j,'date',{inputType:'date'}),
+      field('Nombre de vols',j,'nbVols'),
+      field('Heure de début',j,'hDebut',{inputType:'time'}),
+      field('Heure de fin',j,'hFin',{inputType:'time'}),
+    );
+    box.appendChild(g);
+    box.appendChild(field('Incidents / observations',j,'incidents',{type:'textarea',rows:2,full:true}));
+    c.appendChild(box);
+  });
+  v.appendChild(c);
+}
+
+/* ---------- Documents : dossier de vol complet ---------- */
+function dossierHTML(D,R){
+  const e=store.exploitant, p=refPilote();
+  const adresse=[e.adresse,[e.cp,e.ville].filter(Boolean).join(' ')].filter(Boolean).join(', ');
+  const dstart=D.dateDebut?D.dateDebut.replace('T',' à ').replace(/-/g,'/'):(D.date||'—');
+  const dend=D.dateFin?D.dateFin.replace('T',' à ').replace(/-/g,'/'):'—';
+  let regBloc='';
+  if(D.regime==='open'){ const iss=openConformite(D); regBloc='<b>Catégorie ouverte — sous-catégorie '+esc(D.sousCategorie||'?')+'</b><br>'+esc(OPEN_RULES[D.sousCategorie]||'')+'<br>'+(iss.length?'<span style="color:#c53030">Points à lever : '+iss.map(esc).join(' ; ')+'</span>':'<span style="color:#2f855a">Conforme.</span>'); }
+  else if(D.regime==='sts'){ regBloc='<b>Catégorie spécifique — '+esc(D.sousCategorie||'STS')+' (déclaration)</b><br>'+esc(STS_RULES[D.sousCategorie]||''); }
+  else if(D.regime==='pdra'){ regBloc='<b>Catégorie spécifique — '+esc(D.pdra||'PDRA')+' (autorisation)</b>'; }
+  else if(D.regime==='sora'){ regBloc='<b>Catégorie spécifique — SORA</b><br>iGRC '+(R.igrc!=null?R.igrc:'—')+' · GRC '+(R.grc!=null?R.grc:'—')+' · ARC-'+(R.arcResidual||'—')+' · SAIL '+(R.sail||'—'); }
+  else regBloc='<b>Régime non défini</b>';
+  const prevolRows=PREVOL.map(it=>'<tr><td>'+(D.prevol[it[0]]?'☑':'☐')+'</td><td>'+esc(it[1])+'</td></tr>').join('');
+  const journalRows=(D.journal||[]).map(j=>'<tr><td>'+esc(j.date||'')+'</td><td>'+esc(j.hDebut||'')+'–'+esc(j.hFin||'')+'</td><td>'+esc(j.nbVols||'')+'</td><td>'+esc(j.incidents||'')+'</td></tr>').join('')||'<tr><td colspan="4" style="color:#888">—</td></tr>';
+  const css="body{font-family:'Segoe UI',Arial,sans-serif;max-width:820px;margin:24px auto;color:#1f2733;font-size:11.5pt;line-height:1.5;padding:20px}h1{color:#1a3c6e;font-size:19pt;margin:0 0 2px}h2{color:#1a3c6e;font-size:13pt;border-bottom:2px solid #e8f0fb;padding-bottom:3px;margin:20px 0 8px}.kv{display:flex;gap:10px;margin:2px 0}.kv b{min-width:170px;color:#5a6472;font-weight:600}table{width:100%;border-collapse:collapse;font-size:10.5pt;margin:6px 0}td,th{border:1px solid #d9e0ea;padding:4px 7px;text-align:left}.sign{margin-top:34px;display:flex;justify-content:space-between}@media print{body{margin:0}}";
+  const kv=(k,val)=>'<div class="kv"><b>'+esc(k)+'</b><span>'+esc(val||'—')+'</span></div>';
+  return '<!DOCTYPE html><html lang="fr"><head><meta charset="UTF-8"><title>Dossier de vol — '+esc(D.titre||'')+'</title><style>'+css+'</style></head><body>'+
+    '<h1>Dossier de vol</h1><div style="color:#5a6472">'+esc(regimeLabel(D.regime))+(D.sousCategorie?' · '+esc(D.sousCategorie):'')+'</div>'+
+    '<h2>Exploitant</h2>'+kv('Raison sociale',e.raison)+kv('Exploitant UAS',e.numUAS)+kv('SIRET',e.siret)+kv('Adresse',adresse)+kv('Assurance RC',e.assureur||'—')+
+    '<h2>Télépilote</h2>'+kv('Nom',((p.prenom||'')+' '+(p.nom||'')).trim())+kv('N° télépilote',p.numTele||'—')+kv('Mentions',(p.mentions||[]).join(', ')||'—')+kv('Contact',(p.tel||'')+'  '+(p.mail||''))+
+    '<h2>Aéronef</h2>'+kv('Appareil',((D.appareil.marque||'')+' '+(D.appareil.modele||'')).trim())+kv('Classe C',D.classeC||'—')+kv('Masse au décollage',(D.appareil.masse||'—')+' g')+kv('N° de série',D.appareil.serie)+
+    '<h2>Mission</h2>'+kv('Intitulé',D.titre)+kv('Lieu',D.lieu)+kv('Début',dstart)+kv('Fin',dend)+kv('Hauteur max',(D.hauteurMax||'—')+' m')+kv('Type de vol',D.typeVol)+kv('Environnement',D.environnement)+
+    '<h2>Régime & conformité</h2><p>'+regBloc+'</p>'+
+    '<h2>Check-list pré-vol</h2><table>'+prevolRows+'</table>'+(D.prevol._note?'<p><b>Observations :</b> '+esc(D.prevol._note)+'</p>':'')+
+    '<h2>Journal de vol</h2><table><tr><th>Date</th><th>Horaires</th><th>Nb vols</th><th>Incidents</th></tr>'+journalRows+'</table>'+
+    '<div class="sign"><div>Fait à '+esc(D.lieu?D.lieu.split(',').slice(-1)[0].trim():'____')+', le __________</div><div>Signature du télépilote :</div></div>'+
+    '<p style="color:#888;font-size:8.5pt;margin-top:22px">Dossier généré par l\'Assistant Vol Drone (MGI). Aide à la préparation ; ne se substitue pas à la réglementation applicable.</p>'+
+    '</body></html>';
+}
+async function genDossier(D,R){
+  try{
+    const path=await invoke('export_file',{subdir:D.titre||'Mission',filename:'Dossier_de_vol.html',dataB64:b64FromBytes(new TextEncoder().encode(dossierHTML(D,R)))});
+    openPath(path); setSaved('✓ Dossier de vol généré');
+  }catch(e){ alert('Génération impossible : '+e); }
+}
+function dosDocs(v,D,R){
+  v.appendChild(el('h1','page-h','Dossier & formulaires')); // léger doublon volontaire du titre de section
+  const c0=card('Dossier de vol','Document complet à présenter','Rassemble exploitant, télépilote, appareil, mission, régime & conformité, check-list pré-vol et journal. Ouvre dans le navigateur : Imprimer → Enregistrer en PDF.');
+  const b0=el('div','row-actions'); const g0=el('button','btn primary','📄 Générer le dossier de vol'); g0.onclick=()=>genDossier(D,R); b0.appendChild(g0); c0.appendChild(b0);
+  v.appendChild(c0);
+  // Formulaires officiels (pertinents surtout en spécifique / vol en agglo)
+  dosForms(v,D,R);
 }
 
 /* ---------- SORA (sur le dossier courant) ---------- */
