@@ -295,17 +295,6 @@ function emptyDossier(){return {
   forms:{regime:'',expType:'morale',derogType:'',aotGestionnaire:'',aotObjet:''}
 };}
 function emptyStore(){return {exploitant:emptyExploitant(),pilotes:[],referent:'',dossiers:[],currentId:''};}
-function seededStore(){
-  const s=emptyStore();
-  s.exploitant={
-    raison:'M.G.I. — Maintenance Générale Industrielle',forme:'EURL',
-    siret:'98151498700024',numUAS:'UAS-FR-368093',
-    responsable:'Paul JEANNIN-GIRARDON',adresse:'12 Le Pinier',
-    cp:'85250',ville:'Vendrennes',tel:'0788372276',mail:'contact@mgi-vendee.fr',
-    assureur:'',police:'',notes:'TVA FR72981514987 · APE 33.12Z · SIREN 981514987'
-  };
-  return s;
-}
 function normDossier(d){
   const nd=emptyDossier();
   Object.assign(nd,d||{});
@@ -353,9 +342,7 @@ function curDossier(){return store.dossiers.find(d=>d.id===store.currentId)||nul
 async function loadStore(){
   let raw={};
   try{ raw=JSON.parse(await invoke('data_get')||'{}'); }catch(e){ raw={}; }
-  const empty=!raw || (!raw.exploitant && (!raw.pilotes||!raw.pilotes.length));
-  store = empty ? seededStore() : normalize(raw);
-  if(empty){ await persist(true); }
+  store = normalize(raw); // installation neuve = exploitant vierge (aucune donnée personnelle embarquée)
 }
 async function persist(silent){
   try{ await invoke('data_set',{json:JSON.stringify(store)}); if(!silent) setSaved('Enregistré ✓'); }
