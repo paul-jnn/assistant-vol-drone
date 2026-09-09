@@ -141,6 +141,17 @@
   .b-orange{background:#fbe5d6;color:var(--orange)}
   .b-red{background:#fcdada;color:var(--rouge)}
   .b-grey{background:#eef1f5;color:var(--gris2)}
+  .b-green{background:var(--vert-clair);color:var(--vert)}
+  .fieldlabel{font-size:12px;color:var(--gris);font-weight:700;margin:14px 0 7px}
+  .chips{display:flex;flex-wrap:wrap;gap:7px;margin-bottom:4px}
+  .chip{border:1px solid var(--bord);background:#fff;color:var(--gris);border-radius:20px;padding:6px 14px;font-size:13px;font-weight:600}
+  .chip:hover{border-color:var(--bleu2)}
+  .chip.on{background:var(--bleu2);border-color:var(--bleu2);color:#fff}
+  .habrow{display:flex;align-items:center;gap:8px;margin-bottom:7px}
+  .habrow input[type=text],.habrow input:not([type]){flex:1}
+  .habrow input{padding:8px 11px;border:1px solid var(--bord);border-radius:9px;font-size:13.5px;font-family:inherit}
+  .habrow input[type=date]{flex:0 0 150px}
+  .habrow .badge{flex:0 0 auto;min-width:96px}
   .appinfo{display:flex;flex-wrap:wrap;gap:8px 18px;background:#f7faff;border:1px solid #e0eaf7;border-radius:10px;padding:12px 14px;margin-bottom:12px;font-size:13px}
   .appinfo .it b{color:var(--bleu)}
 
@@ -255,6 +266,19 @@ const DJI_DB=[
 ];
 function djiFind(k){return DJI_DB.find(d=>d.key===k);}
 
+/* Mentions / qualifications drone (cases à cocher) */
+const MENTIONS=['A1','A2','A3','STS-01','STS-02','S-1','S-2','S-3','CATT','CATS'];
+/* Statut d'une date de validité d'habilitation */
+function habStatus(d){
+  if(!d) return null;
+  const today=new Date(); today.setHours(0,0,0,0);
+  const dt=new Date(d+'T00:00:00'); if(isNaN(dt)) return null;
+  const days=Math.round((dt-today)/86400000);
+  if(days<0) return {cls:'b-red',txt:'Périmé'};
+  if(days<=60) return {cls:'b-orange',txt:'À renouveler ('+days+' j)'};
+  return {cls:'b-green',txt:'Valide'};
+}
+
 /* ========== DONNÉES ========== */
 function emptyExploitant(){return {raison:'',forme:'',siret:'',numUAS:'',responsable:'',adresse:'',cp:'',ville:'',tel:'',mail:'',assureur:'',police:'',notes:''};}
 function emptyDossier(){return {
@@ -291,8 +315,18 @@ function normalize(raw){
   const s=Object.assign(emptyStore(),raw||{});
   s.exploitant=Object.assign(emptyExploitant(),raw&&raw.exploitant||{});
   if(!Array.isArray(s.pilotes))s.pilotes=[];
-  s.pilotes=s.pilotes.map(p=>Object.assign(
-    {id:'p'+Math.random().toString(36).slice(2),prenom:'',nom:'',tel:'',mail:'',numTele:'',brevets:'',mentions:'',habilitations:'',notes:''},p));
+  s.pilotes=s.pilotes.map(p=>{
+    const np=Object.assign(
+      {id:'p'+Math.random().toString(36).slice(2),prenom:'',nom:'',tel:'',mail:'',numTele:'',brevets:'',mentions:[],habilitations:[],notes:''},p);
+    // mentions : ancien texte -> tableau de codes cochés
+    if(typeof np.mentions==='string'){ const s2=np.mentions; np.mentions = s2 ? MENTIONS.filter(c=>s2.indexOf(c)>=0) : []; }
+    if(!Array.isArray(np.mentions)) np.mentions=[];
+    // habilitations : ancien texte -> une ligne
+    if(typeof np.habilitations==='string'){ np.habilitations = np.habilitations.trim() ? [{t:np.habilitations.trim(),d:''}] : []; }
+    if(!Array.isArray(np.habilitations)) np.habilitations=[];
+    np.habilitations=np.habilitations.map(h=>Object.assign({t:'',d:''},h));
+    return np;
+  });
   if(s.referent && !s.pilotes.some(p=>p.id===s.referent))s.referent=s.pilotes[0]?s.pilotes[0].id:'';
   // migration : ancien SORA unique -> premier dossier
   if(!Array.isArray(s.dossiers))s.dossiers=[];
@@ -461,7 +495,7 @@ function viewPilotes(v){
   const add=el('button','btn primary','＋ Ajouter un télépilote');
   add.onclick=()=>{
     const id='p'+Date.now();
-    store.pilotes.push({id,prenom:'',nom:'',tel:'',mail:'',numTele:'',brevets:'',mentions:'',habilitations:'',notes:''});
+    store.pilotes.push({id,prenom:'',nom:'',tel:'',mail:'',numTele:'',brevets:'',mentions:[],habilitations:[],notes:''});
     if(!store.referent)store.referent=id;
     scheduleSave();renderView();
   };
@@ -489,10 +523,42 @@ function viewPilotes(v){
     g.append(
       field('Prénom',p,'prenom',{after:upd}),field('Nom',p,'nom',{after:upd}),
       field('Téléphone',p,'tel'),field('Courriel',p,'mail'),
-      field('N° télépilote / attestation',p,'numTele'),field('Brevets / formations',p,'brevets'),
-      field('Mentions drone (A1/A2/A3, STS-01/02, CATS…)',p,'mentions'),field('Habilitations (élec, CACES, SST…)',p,'habilitations'),
+      field('N° télépilote / attestation',p,'numTele'),field('Autres brevets aéronautiques',p,'brevets'),
     );
     pc.appendChild(g);
+
+    // Mentions drone (cases à cocher)
+    pc.appendChild(el('div','fieldlabel','Mentions & qualifications drone'));
+    const chips=el('div','chips');
+    MENTIONS.forEach(m=>{
+      const on=p.mentions.indexOf(m)>=0;
+      const chip=el('button','chip'+(on?' on':''),m);
+      chip.onclick=()=>{ const i=p.mentions.indexOf(m); if(i>=0)p.mentions.splice(i,1); else p.mentions.push(m); scheduleSave(); renderView(); };
+      chips.appendChild(chip);
+    });
+    pc.appendChild(chips);
+
+    // Habilitations (lignes ajoutables + validité)
+    pc.appendChild(el('div','fieldlabel','Habilitations (une par ligne, avec validité)'));
+    if(p.habilitations.length===0) pc.appendChild(el('div','note','Aucune habilitation. Ajoutez-en une.'));
+    p.habilitations.forEach((h,idx)=>{
+      const row=el('div','habrow');
+      const li=document.createElement('input'); li.placeholder='ex : Habilitation électrique B0/H0, CACES R486, SST…'; li.value=h.t||'';
+      li.oninput=()=>{h.t=li.value;scheduleSave();};
+      const di=document.createElement('input'); di.type='date'; di.value=h.d||''; di.title='Date de fin de validité';
+      di.onchange=()=>{h.d=di.value;scheduleSave();renderView();};
+      const st=habStatus(h.d);
+      const badge=st?el('span','badge '+st.cls,st.txt):el('span','badge b-grey','Sans date');
+      const rm=el('button','btn danger sm','−'); rm.title='Supprimer la ligne';
+      rm.onclick=()=>{p.habilitations.splice(idx,1);scheduleSave();renderView();};
+      row.append(li,di,badge,rm);
+      pc.appendChild(row);
+    });
+    const addHab=el('button','btn sm','＋ Ajouter une habilitation');
+    addHab.onclick=()=>{p.habilitations.push({t:'',d:''});scheduleSave();renderView();};
+    const addBar=el('div','row-actions');addBar.style.marginTop='8px';addBar.appendChild(addHab);
+    pc.appendChild(addBar);
+
     pc.appendChild(field('Notes',p,'notes',{type:'textarea',rows:2,full:true}));
     v.appendChild(pc);
   });
@@ -980,12 +1046,12 @@ function dosForms(v,D,R){
 const LIENS=[
   {ic:'🌦',t:'Météo France',u:'https://meteofrance.com/',d:'Prévisions locales'},
   {ic:'🛰',t:'Geoportail',u:'https://www.geoportail.gouv.fr/',d:'Cartes & restrictions'},
-  {ic:'✈',t:'Restrictions drones (DSNA)',u:'https://clearance.dsna.aviation-civile.gouv.fr/',d:'Zones de vol drone'},
+  {ic:'🏛',t:'DGAC — Catégorie spécifique',u:'https://www.ecologie.gouv.fr/politiques-publiques/exploitation-drones-categorie-specifique',d:'Réglementation pro'},
   {ic:'📋',t:'AlphaTango',u:'https://alphatango.aviation-civile.gouv.fr/',d:'Exploitant & déclarations'},
   {ic:'📢',t:'NOTAM (SOFIA)',u:'https://sofia-briefing.aviation-civile.gouv.fr/',d:'Avis aux navigateurs'},
   {ic:'📖',t:'EASA — Réglementation UAS',u:'https://www.easa.europa.eu/en/domains/civil-drones',d:'Cadre européen'},
   {ic:'🗺',t:'Windy',u:'https://www.windy.com/',d:'Vent en altitude'},
-  {ic:'🏛',t:'Écologie.gouv — Drones',u:'https://www.ecologie.gouv.fr/politiques-publiques/drones-usages-professionnels',d:'Guides officiels'},
+  {ic:'🏛',t:'DGAC — Catégorie ouverte',u:'https://www.ecologie.gouv.fr/politiques-publiques/exploitation-drones-categorie-ouverte',d:'Réglementation'},
 ];
 function viewLiens(v){
   v.appendChild(el('h1','page-h','Liens & contacts'));
