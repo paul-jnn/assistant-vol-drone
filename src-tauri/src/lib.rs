@@ -122,6 +122,58 @@ async fn apply_update(app: tauri::AppHandle) -> Result<(), String> {
     Ok(())
 }
 
+
+fn docs_dir(app: &tauri::AppHandle) -> std::path::PathBuf {
+    let d = config_dir(app).join("documents");
+    std::fs::create_dir_all(&d).ok();
+    d
+}
+
+#[tauri::command]
+fn import_doc(app: tauri::AppHandle, filename: String, data_b64: String) -> Result<String, String> {
+    let data = base64::engine::general_purpose::STANDARD.decode(data_b64.as_bytes()).map_err(|e| e.to_string())?;
+    let name = sanitize(&filename);
+    std::fs::write(docs_dir(&app).join(&name), &data).map_err(|e| e.to_string())?;
+    Ok(name)
+}
+
+#[tauri::command]
+fn list_docs(app: tauri::AppHandle) -> Vec<serde_json::Value> {
+    let mut out = vec![];
+    if let Ok(rd) = std::fs::read_dir(docs_dir(&app)) {
+        for e in rd.flatten() {
+            if let Ok(md) = e.metadata() {
+                if md.is_file() {
+                    out.push(serde_json::json!({"name": e.file_name().to_string_lossy(), "size": md.len()}));
+                }
+            }
+        }
+    }
+    out.sort_by(|a,b| a["name"].as_str().unwrap_or("").cmp(b["name"].as_str().unwrap_or("")));
+    out
+}
+
+#[tauri::command]
+fn doc_path(app: tauri::AppHandle, filename: String) -> Result<String, String> {
+    let p = docs_dir(&app).join(sanitize(&filename));
+    if p.exists() { Ok(p.to_string_lossy().to_string()) } else { Err("introuvable".into()) }
+}
+
+#[tauri::command]
+fn delete_doc(app: tauri::AppHandle, filename: String) -> Result<(), String> {
+    std::fs::remove_file(docs_dir(&app).join(sanitize(&filename))).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn export_doc(app: tauri::AppHandle, filename: String) -> Result<String, String> {
+    let name = sanitize(&filename);
+    let dir = export_root(&app).join("Justificatifs");
+    std::fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
+    let dst = dir.join(&name);
+    std::fs::copy(docs_dir(&app).join(&name), &dst).map_err(|e| e.to_string())?;
+    Ok(dst.to_string_lossy().to_string())
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -129,7 +181,8 @@ pub fn run() {
         .plugin(tauri_plugin_updater::Builder::new().build())
         .invoke_handler(tauri::generate_handler![
             pin_status, set_pin, verify_pin, data_get, data_set,
-            form_template, export_file, http_get, check_update, apply_update
+            form_template, export_file, http_get, check_update, apply_update,
+            import_doc, list_docs, doc_path, delete_doc, export_doc
         ])
         .run(tauri::generate_context!())
         .expect("erreur au lancement de l'application Tauri");

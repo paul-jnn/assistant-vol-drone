@@ -158,6 +158,7 @@
   .mapcanvas{flex:1;min-height:380px}
   .mapfoot{display:flex;align-items:center;gap:10px;padding:12px 18px;border-top:1px solid var(--bord)}
   .mapcoord{flex:1;font-size:13px;color:var(--gris)}
+  .pinicon{background:none;border:none;font-size:26px;line-height:1;text-align:center}
   .fieldlabel{font-size:12px;color:var(--gris);font-weight:700;margin:14px 0 7px}
   .chips{display:flex;flex-wrap:wrap;gap:7px;margin-bottom:4px}
   .chip{border:1px solid var(--bord);background:#fff;color:var(--gris);border-radius:20px;padding:6px 14px;font-size:13px;font-weight:600}
@@ -429,6 +430,10 @@ const NAV=[
   {grp:'Missions',items:[
     {id:'dossiers',ic:'🗂',label:'Dossiers de vol'},
   ]},
+  {grp:'Terrain',items:[
+    {id:'checklist',ic:'✅',label:'Check-list pré-vol'},
+    {id:'documents',ic:'📁',label:'Documents / MANEX'},
+  ]},
   {grp:'Ressources',items:[
     {id:'liens',ic:'🔗',label:'Liens & contacts'},
   ]},
@@ -480,7 +485,7 @@ function field(label,obj,key,opts){
 function renderView(){
   const v=document.getElementById('view');
   v.innerHTML='';
-  ({exploitant:viewExploitant,pilotes:viewPilotes,dossiers:viewDossiers,dossier:viewDossier,liens:viewLiens,formulaires:viewSoon}[current]||viewSoon)(v);
+  ({exploitant:viewExploitant,pilotes:viewPilotes,dossiers:viewDossiers,dossier:viewDossier,checklist:viewChecklist,documents:viewDocs,liens:viewLiens,formulaires:viewSoon}[current]||viewSoon)(v);
 }
 
 /* ---------- Exploitant ---------- */
@@ -769,14 +774,16 @@ async function reverseGeocode(lat,lon){
     return await r.json();
   }catch(e){ return null; }
 }
+function siteLabel(D){ return [D.siteAdresse,[D.siteCp,D.siteVille].filter(Boolean).join(' ')].filter(Boolean).join(', '); }
 async function geocodeSite(D){
-  const q=[D.siteAdresse,[D.siteCp,D.siteVille].filter(Boolean).join(' ')].filter(Boolean).join(', ');
+  const q=siteLabel(D);
   if(!q){ alert('Renseignez au moins la ville (et l\'adresse si possible).'); return; }
   setSaved('Localisation…');
   try{
     const arr=await geocode(q);
     if(!arr.length){ alert('Adresse introuvable. Précisez la ville ou le code postal.'); setSaved(''); return; }
     D.lat=(+arr[0].lat).toFixed(6); D.lon=(+arr[0].lon).toFixed(6);
+    if(!D.lieu) D.lieu=q;
     scheduleSave(); renderView(); setSaved('✓ Localisé');
   }catch(e){ alert('Localisation impossible (hors ligne ?) : '+e); setSaved(''); }
 }
@@ -787,7 +794,7 @@ function openMapPicker(D){
   const head=document.createElement('div'); head.className='maphead';
   head.innerHTML='<b>Pointez le lieu de vol</b><span>Cherchez une adresse ou cliquez sur la carte</span>';
   const search=document.createElement('div'); search.className='mapsearch';
-  const si=document.createElement('input'); si.placeholder='Adresse, lieu-dit, ville…';
+  const si=document.createElement('input'); si.placeholder='Adresse, lieu-dit, ville…'; si.value=siteLabel(D);
   const sb=document.createElement('button'); sb.className='btn sm primary'; sb.textContent='Rechercher';
   search.append(si,sb);
   const mapdiv=document.createElement('div'); mapdiv.className='mapcanvas';
@@ -804,7 +811,7 @@ function openMapPicker(D){
   let marker=null, pick=(D.lat&&D.lon)?{lat:+D.lat,lon:+D.lon}:null;
   function setPoint(la,lo){
     pick={lat:la,lon:lo};
-    if(marker) marker.setLatLng([la,lo]); else marker=L.circleMarker([la,lo],{radius:9,color:'#1a3c6e',weight:2,fillColor:'#2b6cb0',fillOpacity:1}).addTo(map);
+    if(marker) marker.setLatLng([la,lo]); else marker=L.marker([la,lo],{icon:L.divIcon({className:'pinicon',html:'📍',iconSize:[30,30],iconAnchor:[15,28]})}).addTo(map);
     coordLbl.textContent='Point : '+la.toFixed(6)+', '+lo.toFixed(6);
   }
   if(pick) setPoint(pick.lat,pick.lon);
@@ -829,6 +836,7 @@ function openMapPicker(D){
       if(!D.siteCp) D.siteCp=a.postcode||D.siteCp;
       if(!D.siteVille) D.siteVille=a.village||a.town||a.city||a.municipality||D.siteVille;
     }
+    if(!D.lieu) D.lieu=siteLabel(D)||(D.lat+', '+D.lon);
     scheduleSave(); close(); renderView(); setSaved('✓ Point enregistré');
   };
 }
@@ -1432,6 +1440,62 @@ function dosForms(v,D,R){
   const b3=el('div','row-actions'); const gen3=el('button','btn primary','📄 Générer la lettre AOT'); gen3.onclick=()=>genAOT(D); b3.appendChild(gen3); c3.appendChild(b3);
   c3.appendChild(el('div','note','La lettre s\'ouvre dans votre navigateur : Fichier → Imprimer → « Enregistrer au format PDF ».'));
   v.appendChild(c3);
+}
+
+/* ---------- Check-list de référence ---------- */
+function viewChecklist(v){
+  v.appendChild(el('h1','page-h','Check-list pré-vol'));
+  v.appendChild(el('p','page-sub','Check-list de référence, consultable sans monter de dossier. Dans un dossier de vol, elle est cochée et enregistrée.'));
+  const c=card('Terrain','Points à vérifier avant décollage','');
+  PREVOL.forEach(it=>{ const row=el('div','ynrow'); row.appendChild(el('div','q',it[1])); row.appendChild(el('span','badge b-grey','à cocher')); c.appendChild(row); });
+  const bar=el('div','row-actions'); bar.style.marginTop='12px';
+  const pr=el('button','btn primary','🖨 Imprimer une check-list vierge'); pr.onclick=printChecklist;
+  bar.appendChild(pr); c.appendChild(bar);
+  v.appendChild(c);
+}
+async function printChecklist(){
+  const rows=PREVOL.map(it=>'<tr><td style="width:26px;text-align:center">☐</td><td>'+esc(it[1])+'</td></tr>').join('');
+  const html='<!DOCTYPE html><html lang="fr"><head><meta charset="UTF-8"><title>Check-list pré-vol</title><style>body{font-family:Segoe UI,Arial,sans-serif;max-width:720px;margin:24px auto;padding:20px;color:#1f2733}h1{color:#1a3c6e;font-size:18pt}table{width:100%;border-collapse:collapse;margin-top:10px}td{border:1px solid #d9e0ea;padding:8px 10px;font-size:12pt}@media print{body{margin:0}}</style></head><body><h1>Check-list pré-vol</h1><p>Exploitant : ______________ · Site : ______________ · Date : __________</p><table>'+rows+'</table><p style="margin-top:26px">Télépilote : ______________   Signature :</p></body></html>';
+  try{ const path=await invoke('export_file',{subdir:'_Modeles',filename:'Checklist_pre-vol_vierge.html',dataB64:b64FromBytes(new TextEncoder().encode(html))}); openPath(path); }catch(e){ alert('Impossible : '+e); }
+}
+
+/* ---------- Documents / MANEX ---------- */
+function fmtSize(n){ if(n<1024)return n+' o'; if(n<1048576)return(n/1024).toFixed(0)+' Ko'; return(n/1048576).toFixed(1)+' Mo'; }
+function viewDocs(v){
+  v.appendChild(el('h1','page-h','Documents / MANEX'));
+  v.appendChild(el('p','page-sub','Importez vos justificatifs (MANEX, attestation d\'assurance, attestations de formation…) pour les consulter et les présenter en cas de contrôle. Stockés localement sur ce poste.'));
+  const c=card('Justificatifs','Vos documents','');
+  const bar=el('div','row-actions');
+  const imp=el('button','btn primary','⬆ Importer un document');
+  imp.onclick=()=>{ const inp=document.createElement('input'); inp.type='file'; inp.onchange=()=>importDoc(inp.files&&inp.files[0]); inp.click(); };
+  bar.appendChild(imp); c.appendChild(bar);
+  const list=el('div'); list.id='docslist'; list.appendChild(el('div','note','Chargement…')); c.appendChild(list);
+  v.appendChild(c);
+  loadDocsList();
+}
+async function loadDocsList(){
+  const list=document.getElementById('docslist'); if(!list)return;
+  let docs=[]; try{ docs=await invoke('list_docs'); }catch(e){ docs=[]; }
+  list.innerHTML='';
+  if(!docs.length){ list.appendChild(el('div','note','Aucun document. Importez votre MANEX, votre attestation d\'assurance, vos attestations de formation…')); return; }
+  docs.forEach(d=>{
+    const row=el('div','habrow');
+    const nm=el('div',null,d.name); nm.style.flex='1'; nm.style.fontSize='13.5px';
+    const sz=el('span','badge b-grey',fmtSize(d.size));
+    const open=el('button','btn sm','Ouvrir'); open.onclick=async()=>{ try{ openPath(await invoke('doc_path',{filename:d.name})); }catch(e){ alert(String(e)); } };
+    const exp=el('button','btn sm','Exporter'); exp.onclick=async()=>{ try{ const p=await invoke('export_doc',{filename:d.name}); openPath(p); setSaved('✓ Exporté'); }catch(e){ alert(String(e)); } };
+    const del=el('button','btn danger sm','🗑'); del.onclick=async()=>{ if(!confirm('Supprimer '+d.name+' ?'))return; try{ await invoke('delete_doc',{filename:d.name}); loadDocsList(); }catch(e){ alert(String(e)); } };
+    row.append(nm,sz,open,exp,del); list.appendChild(row);
+  });
+}
+async function importDoc(file){
+  if(!file)return;
+  setSaved('Import…');
+  try{
+    const buf=new Uint8Array(await file.arrayBuffer());
+    await invoke('import_doc',{filename:file.name,dataB64:b64FromBytes(buf)});
+    setSaved('✓ Importé'); loadDocsList();
+  }catch(e){ alert('Import impossible : '+e); setSaved(''); }
 }
 
 /* ---------- Liens ---------- */
