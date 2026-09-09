@@ -1,12 +1,11 @@
-name: build
+name: release
 
 on:
   push:
-    branches: [ main ]
-  workflow_dispatch:
+    tags: [ 'v*' ]
 
 jobs:
-  build:
+  release:
     strategy:
       fail-fast: false
       matrix:
@@ -14,6 +13,8 @@ jobs:
           - platform: windows-latest
           - platform: ubuntu-22.04
     runs-on: ${{ matrix.platform }}
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@v4
 
@@ -38,16 +39,15 @@ jobs:
           curl -fsSL -o src/vendor/pdf-lib.min.js https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js
           test -s src/vendor/pdf-lib.min.js
 
-      - name: Build (Tauri)
+      - name: Build + release signée (Tauri)
         uses: tauri-apps/tauri-action@v0
         env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ""
-
-      - name: Publier les installateurs
-        uses: actions/upload-artifact@v4
         with:
-          name: installateurs-${{ matrix.platform }}
-          path: |
-            src-tauri/target/release/bundle/**/*
-          if-no-files-found: warn
+          tagName: ${{ github.ref_name }}
+          releaseName: "Assistant Vol Drone ${{ github.ref_name }}"
+          releaseBody: "Mise à jour automatique disponible depuis l'application."
+          releaseDraft: false
+          prerelease: false

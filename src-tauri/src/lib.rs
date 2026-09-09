@@ -1,7 +1,6 @@
 use base64::Engine;
 use tauri::Manager;
 
-// Gabarits officiels embarqués dans le binaire (100% hors ligne).
 const TPL_CERFA: &[u8] = include_bytes!("../forms/cerfa_15476-04.pdf");
 const TPL_DEROG: &[u8] = include_bytes!("../forms/form_r5-uas-derog_v4.pdf");
 
@@ -52,7 +51,6 @@ fn data_set(app: tauri::AppHandle, json: String) -> Result<(), String> {
     std::fs::rename(&tmp, &path).map_err(|e| e.to_string())
 }
 
-// Renvoie un gabarit PDF officiel encodé en base64.
 #[tauri::command]
 fn form_template(name: String) -> Result<String, String> {
     let bytes: &[u8] = match name.as_str() {
@@ -76,8 +74,6 @@ fn export_root(app: &tauri::AppHandle) -> std::path::PathBuf {
     base.join("Assistant Vol Drone")
 }
 
-// Écrit un fichier (PDF, HTML…) fourni en base64 dans Documents/Assistant Vol Drone/<sous-dossier>/.
-// Renvoie le chemin complet du fichier écrit.
 #[tauri::command]
 fn export_file(app: tauri::AppHandle, subdir: String, filename: String, data_b64: String) -> Result<String, String> {
     let data = base64::engine::general_purpose::STANDARD
@@ -89,12 +85,51 @@ fn export_file(app: tauri::AppHandle, subdir: String, filename: String, data_b64
     Ok(path.to_string_lossy().to_string())
 }
 
+// Requête HTTP GET restreinte (météo aviationweather.gov). Renvoie le corps texte.
+#[tauri::command]
+async fn http_get(url: String) -> Result<String, String> {
+    if !url.starts_with("https://aviationweather.gov/") {
+        return Err("URL non autorisée".into());
+    }
+    let resp = reqwest::Client::new()
+        .get(&url)
+        .header("User-Agent", "AssistantVolDrone/1.0")
+        .send().await.map_err(|e| e.to_string())?;
+    resp.text().await.map_err(|e| e.to_string())
+}
+
+// Vérifie s'il existe une mise à jour ; renvoie la version, ou None (silencieux si indisponible).
+#[tauri::command]
+async fn check_update(app: tauri::AppHandle) -> Result<Option<String>, String> {
+    use tauri_plugin_updater::UpdaterExt;
+    let updater = match app.updater() { Ok(u) => u, Err(_) => return Ok(None) };
+    match updater.check().await {
+        Ok(Some(update)) => Ok(Some(update.version.clone())),
+        Ok(None) => Ok(None),
+        Err(_) => Ok(None),
+    }
+}
+
+// Télécharge et installe la mise à jour, puis redémarre l'application.
+#[tauri::command]
+async fn apply_update(app: tauri::AppHandle) -> Result<(), String> {
+    use tauri_plugin_updater::UpdaterExt;
+    let updater = app.updater().map_err(|e| e.to_string())?;
+    if let Some(update) = updater.check().await.map_err(|e| e.to_string())? {
+        update.download_and_install(|_c, _t| {}, || {}).await.map_err(|e| e.to_string())?;
+        app.restart();
+    }
+    Ok(())
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
+        .plugin(tauri_plugin_updater::Builder::new().build())
         .invoke_handler(tauri::generate_handler![
-            pin_status, set_pin, verify_pin, data_get, data_set, form_template, export_file
+            pin_status, set_pin, verify_pin, data_get, data_set,
+            form_template, export_file, http_get, check_update, apply_update
         ])
         .run(tauri::generate_context!())
         .expect("erreur au lancement de l'application Tauri");

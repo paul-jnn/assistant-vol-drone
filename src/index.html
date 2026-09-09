@@ -142,6 +142,12 @@
   .b-red{background:#fcdada;color:var(--rouge)}
   .b-grey{background:#eef1f5;color:var(--gris2)}
   .b-green{background:var(--vert-clair);color:var(--vert)}
+  .updbar{position:fixed;right:18px;bottom:18px;z-index:60;background:var(--bleu);color:#fff;border-radius:12px;box-shadow:0 8px 30px rgba(0,0,0,.3);padding:12px 16px;display:flex;align-items:center;gap:12px;font-size:13.5px;max-width:420px}
+  .updbar b{font-weight:700}
+  .updbar button{border:none;border-radius:8px;padding:7px 12px;font-size:13px;font-weight:600;cursor:pointer}
+  .updbar .go{background:#fff;color:var(--bleu)}
+  .updbar .go:hover{background:#e8f0fb}
+  .updbar .x{background:rgba(255,255,255,.15);color:#fff;padding:7px 10px}
   .fieldlabel{font-size:12px;color:var(--gris);font-weight:700;margin:14px 0 7px}
   .chips{display:flex;flex-wrap:wrap;gap:7px;margin-bottom:4px}
   .chip{border:1px solid var(--bord);background:#fff;color:var(--gris);border-radius:20px;padding:6px 14px;font-size:13px;font-weight:600}
@@ -182,6 +188,8 @@
   <nav class="side" id="side"></nav>
   <main class="main" id="view"></main>
 </div>
+
+<div id="updbar" class="updbar hidden"></div>
 
 <script src="vendor/pdf-lib.min.js"></script>
 <script>
@@ -287,6 +295,7 @@ function emptyDossier(){return {
   titre:'', date:'', lieu:'', notes:'',
   dateDebut:'', dateFin:'', hauteurMax:'', classeC:'', typeVol:'',
   environnement:'', distanceTiers:'',
+  lat:'', lon:'', icao:'', meteo:{},
   regime:'', sousCategorie:'', pdra:'',
   appareil:{key:'',marque:'',modele:'',masse:'',serie:''},
   grc:{dim:'',vit:'',densite:'',mini:false,m1a:'none',m1b:'none',m1c:'none',m2:'none'},
@@ -303,6 +312,7 @@ function normDossier(d){
   nd.arc=Object.assign(emptyDossier().arc,d&&d.arc||{});
   nd.forms=Object.assign(emptyDossier().forms,d&&d.forms||{});
   nd.prevol=Object.assign({},d&&d.prevol||{});
+  nd.meteo=Object.assign({},d&&d.meteo||{});
   if(!Array.isArray(nd.journal))nd.journal=[];
   return nd;
 }
@@ -679,6 +689,51 @@ function dosMission(v,D){
   ac.appendChild(g3);
   if(isDji) ac.appendChild(el('div','note','Valeurs constructeur DJI pré-remplies (modifiables en repassant en saisie manuelle). Dimension et vitesse alimentent directement le calcul GRC.'));
   v.appendChild(ac);
+
+  // Repérage & météo
+  const mc=card('Site','Repérage & météo','Coordonnées du site (pour la carte des restrictions) et relevé météo aéronautique de l\'aérodrome proche.');
+  const gm=el('div','grid3');
+  gm.append(
+    field('Latitude',D,'lat'),
+    field('Longitude',D,'lon'),
+    field('Aérodrome proche (OACI)',D,'icao'),
+  );
+  mc.appendChild(gm);
+  const mb=el('div','row-actions');
+  const bMap=el('button','btn','🗺 Ouvrir la carte des restrictions ici');
+  bMap.onclick=()=>{ const la=(D.lat||'').trim(), lo=(D.lon||'').trim(); if(!la||!lo){alert('Renseignez latitude et longitude.');return;} openExternal('https://www.geoportail.gouv.fr/carte?c='+encodeURIComponent(lo)+','+encodeURIComponent(la)+'&z=15'); };
+  const bMeteo=el('button','btn primary','🌦 Relever la météo');
+  bMeteo.onclick=()=>releverMeteo(D);
+  mb.append(bMap,bMeteo); mc.appendChild(mb);
+  mc.appendChild(el('div','note','Météo : nécessite une connexion Internet au moment du relevé. Le résultat est enregistré dans le dossier et repris dans le PDF.'));
+  if(D.meteo && D.meteo.raw){
+    const m=D.meteo;
+    const box=el('div','result');
+    const l=el('div'); l.innerHTML='<div class="big">'+(m.fltCat||'—')+'</div><div class="lbl">Catégorie</div>';
+    const r=el('div'); r.style.cssText='border-left:1px solid #cfe0f6;padding-left:14px;flex:1';
+    r.innerHTML='<div class="kv"><span>'+esc(m.name||m.icao||'')+'</span><b>relevé '+esc(m.releveLe||'')+'</b></div>'+
+      '<div class="kv"><span>Vent</span><b>'+(m.wdir!=null?m.wdir+'° ':'')+(m.wspd!=null?m.wspd+' kt ('+Math.round(m.wspd*1.852)+' km/h)':'—')+'</b></div>'+
+      '<div class="kv"><span>Température</span><b>'+(m.temp!=null?m.temp+' °C':'—')+'</b></div>'+
+      '<div class="kv"><span>Visibilité</span><b>'+(m.visib!=null?m.visib:'—')+'</b></div>';
+    box.append(l,r); mc.appendChild(box);
+    mc.appendChild(el('div','note','METAR : '+esc(m.raw)+(m.taf?'  ·  TAF : '+esc(m.taf):'')));
+  }
+  v.appendChild(mc);
+}
+async function releverMeteo(D){
+  const icao=(D.icao||'').trim().toUpperCase();
+  if(!icao){ alert('Renseignez le code OACI de l\'aérodrome proche (ex : LFRV).'); return; }
+  setSaved('Relevé météo…');
+  try{
+    const mj=await invoke('http_get',{url:'https://aviationweather.gov/api/data/metar?ids='+encodeURIComponent(icao)+'&format=json'});
+    let arr=[]; try{ arr=JSON.parse(mj); }catch(e){ arr=[]; }
+    if(!arr.length){ alert('Aucune station météo trouvée pour '+icao+'.'); setSaved(''); return; }
+    let taf=''; try{ taf=(await invoke('http_get',{url:'https://aviationweather.gov/api/data/taf?ids='+encodeURIComponent(icao)+'&format=raw'})).trim(); }catch(e){}
+    const s=arr[0];
+    D.meteo={ icao:s.icaoId, name:s.name, releveLe:new Date().toISOString().slice(0,16).replace('T',' '),
+      wdir:s.wdir, wspd:s.wspd, temp:s.temp, visib:s.visib, fltCat:s.fltCat, raw:s.rawOb, taf:taf };
+    scheduleSave(); renderView(); setSaved('✓ Météo relevée');
+  }catch(e){ alert('Relevé impossible (hors ligne ?) : '+e); setSaved(''); }
 }
 function applyModel(D){
   const d=djiFind(D.appareil.key);
@@ -896,6 +951,7 @@ function dossierHTML(D,R){
     '<h2>Télépilote</h2>'+kv('Nom',((p.prenom||'')+' '+(p.nom||'')).trim())+kv('N° télépilote',p.numTele||'—')+kv('Mentions',(p.mentions||[]).join(', ')||'—')+kv('Contact',(p.tel||'')+'  '+(p.mail||''))+
     '<h2>Aéronef</h2>'+kv('Appareil',((D.appareil.marque||'')+' '+(D.appareil.modele||'')).trim())+kv('Classe C',D.classeC||'—')+kv('Masse au décollage',(D.appareil.masse||'—')+' g')+kv('N° de série',D.appareil.serie)+
     '<h2>Mission</h2>'+kv('Intitulé',D.titre)+kv('Lieu',D.lieu)+kv('Début',dstart)+kv('Fin',dend)+kv('Hauteur max',(D.hauteurMax||'—')+' m')+kv('Type de vol',D.typeVol)+kv('Environnement',D.environnement)+
+    (D.meteo&&D.meteo.raw?'<h2>Météo</h2>'+kv('Station',D.meteo.name||D.meteo.icao)+kv('Relevé le',D.meteo.releveLe)+kv('Catégorie',D.meteo.fltCat)+kv('Vent',(D.meteo.wdir!=null?D.meteo.wdir+'° ':'')+(D.meteo.wspd!=null?D.meteo.wspd+' kt':''))+kv('METAR',D.meteo.raw)+(D.meteo.taf?kv('TAF',D.meteo.taf):''):'')+
     '<h2>Régime & conformité</h2><p>'+regBloc+'</p>'+
     '<h2>Check-list pré-vol</h2><table>'+prevolRows+'</table>'+(D.prevol._note?'<p><b>Observations :</b> '+esc(D.prevol._note)+'</p>':'')+
     '<h2>Journal de vol</h2><table><tr><th>Date</th><th>Horaires</th><th>Nb vols</th><th>Incidents</th></tr>'+journalRows+'</table>'+
@@ -1365,6 +1421,23 @@ async function enterApp(){
   lock.style.display='none';appEl.classList.add('show');
   await loadStore();
   renderNav();renderView();setSaved('');
+  checkUpdate();
+}
+async function checkUpdate(){
+  try{
+    const v=await invoke('check_update');
+    if(v) showUpdBar(v);
+  }catch(e){}
+}
+function showUpdBar(v){
+  const bar=document.getElementById('updbar');
+  bar.innerHTML='<span>Mise à jour <b>'+v+'</b> disponible</span><button class="go" id="updGo">Installer &amp; redémarrer</button><button class="x" id="updX">✕</button>';
+  bar.classList.remove('hidden');
+  document.getElementById('updGo').onclick=async()=>{
+    const b=document.getElementById('updGo'); b.textContent='Installation…'; b.disabled=true;
+    try{ await invoke('apply_update'); }catch(e){ alert('Mise à jour impossible : '+e); b.textContent='Réessayer'; b.disabled=false; }
+  };
+  document.getElementById('updX').onclick=()=>bar.classList.add('hidden');
 }
 btnPin.addEventListener('click',submitPin);
 pin.addEventListener('keydown',e=>{if(e.key==='Enter'){pinMode==='create'?pin2.focus():submitPin();}});
