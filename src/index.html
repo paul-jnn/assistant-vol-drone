@@ -16,7 +16,7 @@
   body{font-family:"Segoe UI",Roboto,system-ui,Arial,sans-serif;color:var(--texte);background:var(--fond)}
   button{font-family:inherit;cursor:pointer}
 
-  /* ---------- Verrou PIN ---------- */
+  /* Verrou PIN */
   #lock{position:fixed;inset:0;background:var(--bleu);display:flex;align-items:center;justify-content:center;z-index:50}
   #lock .card{background:#fff;border-radius:16px;box-shadow:0 10px 40px rgba(0,0,0,.25);padding:34px 38px;width:360px;text-align:center}
   #lock .logo{width:64px;height:64px;border-radius:16px;background:var(--bleu);color:#fff;font-size:30px;display:flex;align-items:center;justify-content:center;margin:0 auto 16px}
@@ -29,7 +29,7 @@
   .msg{min-height:18px;font-size:13px;margin-top:8px}
   .msg.err{color:var(--rouge)}.msg.ok{color:var(--vert)}
 
-  /* ---------- Coque ---------- */
+  /* Coque */
   #app{display:none;grid-template-columns:230px 1fr;grid-template-rows:56px 1fr;height:100vh}
   #app.show{display:grid}
   .topbar{grid-column:1/3;background:var(--bleu);color:#fff;display:flex;align-items:center;gap:12px;padding:0 18px}
@@ -42,7 +42,7 @@
 
   .side{background:#12315c;padding:12px 10px;overflow:auto}
   .side .grp{color:#7fa3d0;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;margin:14px 8px 6px}
-  .side a{display:flex;align-items:center;gap:9px;color:#d6e2f4;text-decoration:none;padding:9px 11px;border-radius:9px;font-size:14px;margin-bottom:2px}
+  .side a{display:flex;align-items:center;gap:9px;color:#d6e2f4;text-decoration:none;padding:9px 11px;border-radius:9px;font-size:14px;margin-bottom:2px;cursor:pointer}
   .side a .ic{width:18px;text-align:center}
   .side a:hover{background:rgba(255,255,255,.08)}
   .side a.active{background:var(--bleu2);color:#fff;font-weight:600}
@@ -52,6 +52,7 @@
   .main{overflow:auto;padding:24px 30px}
   .page-h{margin:0 0 4px;color:var(--bleu);font-size:22px}
   .page-sub{color:var(--gris);font-size:13.5px;margin:0 0 20px}
+  .backlink{display:inline-flex;align-items:center;gap:6px;color:var(--bleu2);font-size:13px;font-weight:600;background:none;border:none;padding:0;margin-bottom:10px}
 
   .card{background:#fff;border:1px solid var(--bord);border-radius:14px;padding:20px 22px;margin-bottom:18px;box-shadow:0 1px 3px rgba(20,40,70,.04)}
   .card > h2{margin:0 0 2px;font-size:16px;color:var(--bleu)}
@@ -61,12 +62,14 @@
   h3.step:first-of-type{border-top:none;padding-top:0;margin-top:4px}
 
   .grid{display:grid;grid-template-columns:1fr 1fr;gap:12px 16px}
+  .grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px 16px}
   .field{display:flex;flex-direction:column;gap:4px}
-  .field.full{grid-column:1/3}
+  .field.full{grid-column:1/-1}
   .field label{font-size:12px;color:var(--gris);font-weight:600}
   .field input,.field textarea,.field select{padding:9px 11px;border:1px solid var(--bord);border-radius:9px;font-size:14px;font-family:inherit;color:var(--texte);background:#fff}
   .field input:focus,.field textarea:focus,.field select:focus{outline:none;border-color:var(--bleu2);box-shadow:0 0 0 3px rgba(43,108,176,.12)}
   .field textarea{resize:vertical;min-height:44px}
+  .field input:read-only{background:#f4f7fb;color:var(--gris)}
 
   .btn{border:1px solid var(--bord);background:#fff;color:var(--texte);border-radius:9px;padding:8px 13px;font-size:13.5px;font-weight:600}
   .btn:hover{background:var(--fond)}
@@ -92,7 +95,20 @@
   .linklist a .ic{font-size:17px}
   .linklist a small{display:block;color:var(--gris);font-size:11.5px}
 
-  /* ---------- SORA ---------- */
+  /* Dossiers */
+  .doscard{display:flex;align-items:center;gap:14px;border:1px solid var(--bord);border-radius:12px;padding:14px 16px;margin-bottom:10px;background:#fff;cursor:pointer}
+  .doscard:hover{border-color:var(--bleu2);background:#f7faff}
+  .doscard .ic{width:40px;height:40px;border-radius:10px;background:var(--bleu-clair);color:var(--bleu);display:flex;align-items:center;justify-content:center;font-size:19px}
+  .doscard .info{flex:1}
+  .doscard .info b{font-size:14.5px;color:var(--texte)}
+  .doscard .info small{display:block;color:var(--gris);font-size:12px;margin-top:2px}
+  .doscard .sail{font-size:12px;font-weight:800;color:#fff;background:var(--bleu2);border-radius:8px;padding:4px 10px}
+  .doscard .sail.empty{background:#c3ccd8}
+  .doscard .acts{display:flex;gap:6px}
+  .doscard .acts button{border:1px solid var(--bord);background:#fff;border-radius:8px;padding:5px 8px;font-size:13px}
+  .doscard .acts button:hover{background:var(--fond)}
+
+  /* SORA */
   .steps{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:18px}
   .steps button{border:1px solid var(--bord);background:#fff;color:var(--gris);border-radius:20px;padding:7px 15px;font-size:13px;font-weight:600}
   .steps button.on{background:var(--bleu2);border-color:var(--bleu2);color:#fff}
@@ -120,20 +136,19 @@
   .osoitem{display:flex;align-items:center;gap:12px;border:1px solid var(--bord);border-radius:10px;padding:9px 13px;margin-bottom:7px}
   .osoitem .id{font-weight:800;color:var(--bleu);min-width:42px;font-size:13px}
   .osoitem .t{flex:1;font-size:13px}
-  .osoitem .cat{font-size:11px;color:var(--gris2);min-width:74px}
   .badge{font-size:11.5px;font-weight:800;border-radius:7px;padding:3px 9px;min-width:88px;text-align:center}
   .b-yellow{background:#fdf3d7;color:var(--jaune)}
   .b-orange{background:#fbe5d6;color:var(--orange)}
   .b-red{background:#fcdada;color:var(--rouge)}
   .b-grey{background:#eef1f5;color:var(--gris2)}
-  .b-cert{background:var(--rouge);color:#fff;padding:3px 10px;border-radius:7px;font-weight:800;font-size:12px}
+  .appinfo{display:flex;flex-wrap:wrap;gap:8px 18px;background:#f7faff;border:1px solid #e0eaf7;border-radius:10px;padding:12px 14px;margin-bottom:12px;font-size:13px}
+  .appinfo .it b{color:var(--bleu)}
 
-  @media(max-width:900px){.grid,.linklist{grid-template-columns:1fr}.field.full{grid-column:1}.summary{grid-template-columns:1fr 1fr}}
+  @media(max-width:900px){.grid,.grid3,.linklist{grid-template-columns:1fr}.field.full{grid-column:1}.summary{grid-template-columns:1fr 1fr}}
 </style>
 </head>
 <body>
 
-<!-- ============ VERROU PIN ============ -->
 <div id="lock">
   <div class="card">
     <div class="logo">🛩</div>
@@ -146,7 +161,6 @@
   </div>
 </div>
 
-<!-- ============ APPLICATION ============ -->
 <div id="app">
   <div class="topbar">
     <div class="brand"><span class="ic">🛩</span> Assistant Vol Drone</div>
@@ -161,17 +175,12 @@
 <script>
 "use strict";
 const invoke = window.__TAURI__.core.invoke;
-
 function openExternal(url){
-  try{
-    if(window.__TAURI__.opener && window.__TAURI__.opener.openUrl){ window.__TAURI__.opener.openUrl(url); return; }
-  }catch(e){}
+  try{ if(window.__TAURI__.opener && window.__TAURI__.opener.openUrl){ window.__TAURI__.opener.openUrl(url); return; } }catch(e){}
   invoke('plugin:opener|open_url',{url:url}).catch(()=>{});
 }
 
-/* =========================================================
-   RÉFÉRENCES SORA 2.5
-   ========================================================= */
+/* ========== RÉFÉRENCES SORA 2.5 ========== */
 const IGRC = {
   cols:[{dim:1,spd:25},{dim:3,spd:35},{dim:8,spd:75},{dim:20,spd:120},{dim:40,spd:200}],
   crit:[6.5,65,650,6500,65000],
@@ -216,16 +225,39 @@ const OSO=[
 const REQMAP={'L':'b-yellow','M':'b-orange','H':'b-red','-':'b-grey'};
 const REQTXT={'L':'Faible (L)','M':'Moyen (M)','H':'Haut (H)','-':'Non requis'};
 
-/* =========================================================
-   DONNÉES
-   ========================================================= */
+/* ========== BASE DE RÉFÉRENCE DRONES DJI ========== */
+/* dim = dimension caractéristique max (m) · vit = vitesse horizontale max (m/s) · masse = masse au décollage (g). Specs constructeur, vérifiables. */
+const DJI_DB=[
+  {key:'mini4pro',  cat:'Grand public', modele:'Mini 4 Pro',            dim:0.30, vit:16, masse:249},
+  {key:'mini3pro',  cat:'Grand public', modele:'Mini 3 Pro',            dim:0.25, vit:16, masse:249},
+  {key:'air3s',     cat:'Grand public', modele:'Air 3S',                dim:0.33, vit:19, masse:724},
+  {key:'air3',      cat:'Grand public', modele:'Air 3',                 dim:0.33, vit:19, masse:720},
+  {key:'mavic3',    cat:'Grand public', modele:'Mavic 3',               dim:0.38, vit:19, masse:895},
+  {key:'mavic3pro', cat:'Grand public', modele:'Mavic 3 Pro',           dim:0.38, vit:21, masse:958},
+  {key:'mavic3e',   cat:'Entreprise',   modele:'Mavic 3E (Enterprise)', dim:0.38, vit:21, masse:915},
+  {key:'mavic3t',   cat:'Entreprise',   modele:'Mavic 3T (Thermal)',    dim:0.38, vit:21, masse:920},
+  {key:'mavic3m',   cat:'Entreprise',   modele:'Mavic 3M (Multispec.)', dim:0.38, vit:21, masse:980},
+  {key:'m30',       cat:'Entreprise',   modele:'Matrice 30',            dim:0.67, vit:23, masse:3770},
+  {key:'m30t',      cat:'Entreprise',   modele:'Matrice 30T',           dim:0.67, vit:23, masse:3770},
+  {key:'m300',      cat:'Entreprise',   modele:'Matrice 300 RTK',       dim:0.90, vit:23, masse:6300},
+  {key:'m350',      cat:'Entreprise',   modele:'Matrice 350 RTK',       dim:0.90, vit:23, masse:6470},
+  {key:'flycart30', cat:'Lourd / cargo',modele:'FlyCart 30',            dim:3.09, vit:12, masse:42500},
+  {key:'flycart100',cat:'Lourd / cargo',modele:'FlyCart 100',           dim:3.22, vit:20, masse:55200},
+  {key:'agrast40',  cat:'Agricole',     modele:'Agras T40',             dim:3.00, vit:10, masse:38000},
+  {key:'agrast50',  cat:'Agricole',     modele:'Agras T50',             dim:3.09, vit:10, masse:39900},
+];
+function djiFind(k){return DJI_DB.find(d=>d.key===k);}
+
+/* ========== DONNÉES ========== */
 function emptyExploitant(){return {raison:'',forme:'',siret:'',numUAS:'',responsable:'',adresse:'',cp:'',ville:'',tel:'',mail:'',assureur:'',police:'',notes:''};}
-function emptySora(){return {
-  titre:'',
+function emptyDossier(){return {
+  id:'d'+Date.now()+Math.random().toString(36).slice(2,6),
+  titre:'', date:'', lieu:'', notes:'',
+  appareil:{key:'',marque:'',modele:'',masse:'',serie:''},
   grc:{dim:'',vit:'',densite:'',mini:false,m1a:'none',m1b:'none',m1c:'none',m2:'none'},
   arc:{atypical:'',fl600:'',airport:'',airportClass:'',above500:'',adsb:'',eac:'',urban:'',residual:'',reduceJust:'',tacJust:''}
 };}
-function emptyStore(){return {exploitant:emptyExploitant(),pilotes:[],referent:'',sora:emptySora()};}
+function emptyStore(){return {exploitant:emptyExploitant(),pilotes:[],referent:'',dossiers:[],currentId:''};}
 function seededStore(){
   const s=emptyStore();
   s.exploitant={
@@ -237,6 +269,14 @@ function seededStore(){
   };
   return s;
 }
+function normDossier(d){
+  const nd=emptyDossier();
+  Object.assign(nd,d||{});
+  nd.appareil=Object.assign(emptyDossier().appareil,d&&d.appareil||{});
+  nd.grc=Object.assign(emptyDossier().grc,d&&d.grc||{});
+  nd.arc=Object.assign(emptyDossier().arc,d&&d.arc||{});
+  return nd;
+}
 function normalize(raw){
   const s=Object.assign(emptyStore(),raw||{});
   s.exploitant=Object.assign(emptyExploitant(),raw&&raw.exploitant||{});
@@ -244,15 +284,21 @@ function normalize(raw){
   s.pilotes=s.pilotes.map(p=>Object.assign(
     {id:'p'+Math.random().toString(36).slice(2),prenom:'',nom:'',tel:'',mail:'',numTele:'',brevets:'',mentions:'',habilitations:'',notes:''},p));
   if(s.referent && !s.pilotes.some(p=>p.id===s.referent))s.referent=s.pilotes[0]?s.pilotes[0].id:'';
-  const so=emptySora();
-  s.sora=Object.assign(so,raw&&raw.sora||{});
-  s.sora.grc=Object.assign(so.grc,raw&&raw.sora&&raw.sora.grc||{});
-  s.sora.arc=Object.assign(so.arc,raw&&raw.sora&&raw.sora.arc||{});
+  // migration : ancien SORA unique -> premier dossier
+  if(!Array.isArray(s.dossiers))s.dossiers=[];
+  if((!s.dossiers.length) && raw && raw.sora){
+    const d=emptyDossier(); d.titre='Dossier importé';
+    d.grc=Object.assign(d.grc,raw.sora.grc||{}); d.arc=Object.assign(d.arc,raw.sora.arc||{});
+    s.dossiers=[d];
+  }
+  s.dossiers=s.dossiers.map(normDossier);
+  if(s.currentId && !s.dossiers.some(d=>d.id===s.currentId))s.currentId='';
   return s;
 }
 
 let store=emptyStore();
 let saveTimer=null;
+function curDossier(){return store.dossiers.find(d=>d.id===store.currentId)||null;}
 
 async function loadStore(){
   let raw={};
@@ -262,24 +308,13 @@ async function loadStore(){
   if(empty){ await persist(true); }
 }
 async function persist(silent){
-  try{
-    await invoke('data_set',{json:JSON.stringify(store)});
-    if(!silent) setSaved('Enregistré ✓');
-  }catch(e){ setSaved('Erreur d\'enregistrement',true); }
+  try{ await invoke('data_set',{json:JSON.stringify(store)}); if(!silent) setSaved('Enregistré ✓'); }
+  catch(e){ setSaved('Erreur d\'enregistrement',true); }
 }
-function scheduleSave(){
-  setSaved('Modification…');
-  clearTimeout(saveTimer);
-  saveTimer=setTimeout(()=>persist(false),450);
-}
-function setSaved(t,err){
-  const el=document.getElementById('saveState');
-  el.textContent=t; el.style.color=err?'#f6b0b0':'#bcd3f0';
-}
+function scheduleSave(){ setSaved('Modification…'); clearTimeout(saveTimer); saveTimer=setTimeout(()=>persist(false),450); }
+function setSaved(t,err){ const el=document.getElementById('saveState'); el.textContent=t; el.style.color=err?'#f6b0b0':'#bcd3f0'; }
 
-/* =========================================================
-   MOTEUR DE CALCUL SORA
-   ========================================================= */
+/* ========== MOTEUR SORA ========== */
 function colIndex(dim,vit){
   let ci=0,cv=0;
   for(let i=0;i<IGRC.cols.length;i++){ if(dim<=IGRC.cols[i].dim){ci=i;break;} if(i===IGRC.cols.length-1)ci=i; }
@@ -295,8 +330,8 @@ function computeARC(a){
   if(a.adsb==='yes'||a.eac==='yes'||a.urban==='yes') return 'c';
   return 'b';
 }
-function computeSora(){
-  const g=store.sora.grc, a=store.sora.arc;
+function computeSora(D){
+  const g=D.grc, a=D.arc;
   const dim=parseFloat(g.dim), vit=parseFloat(g.vit);
   const out={valid:false};
   if(!isNaN(dim)&&!isNaN(vit)&&g.densite){
@@ -320,39 +355,35 @@ function computeSora(){
   }
   if(out.sail && out.sail!=='CERT'){
     const si=['I','II','III','IV','V','VI'].indexOf(out.sail);
-    out.sailIdx=si;
-    out.osoReq=OSO.map(o=>({id:o.id,cat:o.cat,t:o.t,lvl:o.r[si]}));
+    out.sailIdx=si; out.osoReq=OSO.map(o=>({id:o.id,cat:o.cat,t:o.t,lvl:o.r[si]}));
   }
   return out;
 }
 
-/* =========================================================
-   NAVIGATION
-   ========================================================= */
+/* ========== NAVIGATION ========== */
 const NAV=[
   {grp:'Référentiel',items:[
     {id:'exploitant',ic:'🏢',label:'Exploitant'},
     {id:'pilotes',ic:'👤',label:'Télépilotes'},
   ]},
-  {grp:'Préparation',items:[
-    {id:'sora',ic:'🧭',label:'Assistant SORA'},
-    {id:'formulaires',ic:'📄',label:'Formulaires',soon:true},
+  {grp:'Missions',items:[
+    {id:'dossiers',ic:'🗂',label:'Dossiers de vol'},
   ]},
   {grp:'Ressources',items:[
     {id:'liens',ic:'🔗',label:'Liens & contacts'},
+    {id:'formulaires',ic:'📄',label:'Formulaires',soon:true},
   ]},
 ];
 let current='exploitant';
+let soraStep='mission';
 
 function renderNav(){
   const side=document.getElementById('side');
   side.innerHTML='';
   NAV.forEach(g=>{
-    const t=document.createElement('div');t.className='grp';t.textContent=g.grp;side.appendChild(t);
+    side.appendChild(el('div','grp',g.grp));
     g.items.forEach(it=>{
-      const a=document.createElement('a');
-      a.href='#'+it.id;a.dataset.id=it.id;
-      a.className=(it.id===current?'active':'')+(it.soon?' soon':'');
+      const a=el('a',(it.id===current||(current==='dossier'&&it.id==='dossiers')?'active':'')+(it.soon?' soon':''));
       a.innerHTML='<span class="ic">'+it.ic+'</span> '+it.label+(it.soon?'<span class="tag">à venir</span>':'');
       a.onclick=e=>{e.preventDefault();current=it.id;renderNav();renderView();};
       side.appendChild(a);
@@ -360,9 +391,7 @@ function renderNav(){
   });
 }
 
-/* =========================================================
-   OUTILS DE RENDU
-   ========================================================= */
+/* ========== OUTILS DE RENDU ========== */
 function el(tag,cls,txt){const e=document.createElement(tag);if(cls)e.className=cls;if(txt!=null)e.textContent=txt;return e;}
 function card(kick,title,desc){
   const c=el('div','card');
@@ -381,8 +410,9 @@ function field(label,obj,key,opts){
     inp=document.createElement('select');
     (opts.options||[]).forEach(o=>{const op=document.createElement('option');op.value=o[0];op.textContent=o[1];inp.appendChild(op);});
   }
-  else inp=document.createElement('input');
+  else {inp=document.createElement('input'); if(opts.inputType)inp.type=opts.inputType;}
   inp.value=obj[key]!=null?obj[key]:'';
+  if(opts.readonly)inp.readOnly=true;
   inp.onchange=inp.oninput=()=>{obj[key]=inp.value;scheduleSave();if(opts.after)opts.after();};
   f.appendChild(inp);
   return f;
@@ -391,7 +421,7 @@ function field(label,obj,key,opts){
 function renderView(){
   const v=document.getElementById('view');
   v.innerHTML='';
-  ({exploitant:viewExploitant,pilotes:viewPilotes,sora:viewSora,liens:viewLiens,formulaires:viewSoon}[current]||viewSoon)(v);
+  ({exploitant:viewExploitant,pilotes:viewPilotes,dossiers:viewDossiers,dossier:viewDossier,liens:viewLiens,formulaires:viewSoon}[current]||viewSoon)(v);
 }
 
 /* ---------- Exploitant ---------- */
@@ -426,8 +456,7 @@ function viewPilotes(v){
     if(!store.referent)store.referent=id;
     scheduleSave();renderView();
   };
-  bar.appendChild(add);
-  v.appendChild(bar);
+  bar.appendChild(add);v.appendChild(bar);
   if(store.pilotes.length===0){ v.appendChild(el('div','note','Aucun télépilote enregistré. Ajoutez-en un pour commencer.')); return; }
   store.pilotes.forEach(p=>{
     const pc=el('div','pilote');
@@ -460,11 +489,119 @@ function viewPilotes(v){
   });
 }
 
-/* ---------- SORA ---------- */
-let soraStep='grc';
+/* ---------- Dossiers (liste) ---------- */
+function viewDossiers(v){
+  v.appendChild(el('h1','page-h','Dossiers de vol'));
+  v.appendChild(el('p','page-sub','Une fiche par mission, avec son appareil et son analyse SORA. Cliquez pour ouvrir.'));
+  const bar=el('div','row-actions');
+  const add=el('button','btn primary','＋ Nouveau dossier');
+  add.onclick=()=>{ const d=emptyDossier(); d.titre='Nouvelle mission'; d.date=new Date().toISOString().slice(0,10);
+    store.dossiers.unshift(d); store.currentId=d.id; soraStep='mission'; scheduleSave(); current='dossier'; renderNav(); renderView(); };
+  bar.appendChild(add);v.appendChild(bar);
+  if(store.dossiers.length===0){ v.appendChild(el('div','note','Aucun dossier. Créez votre première mission.')); return; }
+  store.dossiers.forEach(d=>{
+    const R=computeSora(d);
+    const c=el('div','doscard');
+    c.appendChild(el('div','ic','🛩'));
+    const info=el('div','info');
+    info.appendChild(el('b',null,d.titre||'Sans titre'));
+    const bits=[d.date,d.lieu,d.appareil.modele?('DJI '+d.appareil.modele):(d.appareil.marque?d.appareil.marque+' '+d.appareil.modele:'')].filter(Boolean).join(' · ');
+    info.appendChild(el('small',null,bits||'—'));
+    c.appendChild(info);
+    c.appendChild(el('div','sail'+(R.sail?'':' empty'),R.sail?(R.sail==='CERT'?'CERT':'SAIL '+R.sail):'SAIL —'));
+    const acts=el('div','acts');
+    const dup=el('button',null,'⧉');dup.title='Dupliquer';
+    dup.onclick=e=>{e.stopPropagation();const n=normDossier(JSON.parse(JSON.stringify(d)));n.id=emptyDossier().id;n.titre=(d.titre||'Mission')+' (copie)';store.dossiers.unshift(n);scheduleSave();renderView();};
+    const del=el('button',null,'🗑');del.title='Supprimer';
+    del.onclick=e=>{e.stopPropagation();if(!confirm('Supprimer ce dossier ?'))return;store.dossiers=store.dossiers.filter(x=>x.id!==d.id);scheduleSave();renderView();};
+    acts.append(dup,del);c.appendChild(acts);
+    c.onclick=()=>{store.currentId=d.id;soraStep='mission';current='dossier';renderNav();renderView();};
+    v.appendChild(c);
+  });
+}
+
+/* ---------- Dossier (détail) ---------- */
+function viewDossier(v){
+  const D=curDossier();
+  if(!D){ current='dossiers'; return viewDossiers(v); }
+  const R=computeSora(D);
+  const back=el('button','backlink','← Tous les dossiers');
+  back.onclick=()=>{current='dossiers';renderNav();renderView();};
+  v.appendChild(back);
+  v.appendChild(el('h1','page-h',D.titre||'Mission'));
+  v.appendChild(el('p','page-sub','Analyse SORA 2.5 de la mission. Enregistrement automatique.'));
+  v.appendChild(summaryBar(R));
+
+  const steps=el('div','steps');
+  [['mission','Mission & appareil'],['grc','1·2·3 — Risque sol'],['arc','4·5·6 — Risque air'],['sail','7·10 — SAIL & OSO']].forEach(s=>{
+    const b=el('button',soraStep===s[0]?'on':'',s[1]);
+    b.onclick=()=>{soraStep=s[0];renderView();};
+    steps.appendChild(b);
+  });
+  v.appendChild(steps);
+
+  if(soraStep==='mission') dosMission(v,D);
+  else if(soraStep==='grc') soraGRC(v,D,R);
+  else if(soraStep==='arc') soraARC(v,D,R);
+  else soraSAIL(v,D,R);
+}
+
+function dosMission(v,D){
+  const c=card('Mission','Informations générales','Identité de la mission et appareil utilisé.');
+  const g=el('div','grid');
+  g.append(
+    field('Intitulé de la mission',D,'titre',{after:()=>{renderNav();}}),
+    field('Date',D,'date',{inputType:'date'}),
+    field('Lieu / site',D,'lieu',{full:true}),
+  );
+  c.appendChild(g);
+  c.appendChild(field('Notes de mission',D,'notes',{type:'textarea',rows:2,full:true}));
+  v.appendChild(c);
+
+  const ac=card('Appareil','Aéronef utilisé','Choisissez un modèle DJI : dimension, vitesse et masse se remplissent seules. Il ne reste que le n° de série.');
+  const opts=[['','— Choisir un modèle DJI ou saisie manuelle —']];
+  let lastCat='';
+  DJI_DB.forEach(d=>{ opts.push([d.key,(d.cat!==lastCat?'【'+d.cat+'】 ':'')+'DJI '+d.modele]); lastCat=d.cat; });
+  opts.push(['manuel','✎ Saisie manuelle (autre marque)']);
+  const sel=field('Modèle',D.appareil,'key',{type:'select',options:opts,after:()=>applyModel(D)});
+  ac.appendChild(sel);
+
+  const isDji=!!djiFind(D.appareil.key);
+  const g2=el('div','grid3');
+  g2.append(
+    field('Marque',D.appareil,'marque',{readonly:isDji}),
+    field('Modèle',D.appareil,'modele',{readonly:isDji}),
+    field('N° de série',D.appareil,'serie'),
+  );
+  ac.appendChild(g2);
+  const g3=el('div','grid3');
+  g3.append(
+    field('Dimension caractéristique (m)',D.grc,'dim',{readonly:isDji}),
+    field('Vitesse max (m/s)',D.grc,'vit',{readonly:isDji}),
+    field('Masse au décollage (g)',D.appareil,'masse',{readonly:isDji}),
+  );
+  ac.appendChild(g3);
+  if(isDji) ac.appendChild(el('div','note','Valeurs constructeur DJI pré-remplies (modifiables en repassant en saisie manuelle). Dimension et vitesse alimentent directement le calcul GRC.'));
+  v.appendChild(ac);
+}
+function applyModel(D){
+  const d=djiFind(D.appareil.key);
+  if(d){
+    D.appareil.marque='DJI'; D.appareil.modele=d.modele; D.appareil.masse=String(d.masse);
+    D.grc.dim=String(d.dim); D.grc.vit=String(d.vit);
+    D.grc.mini = (d.masse<250 && d.vit<=25);
+  } else if(D.appareil.key==='manuel'){
+    D.appareil.marque=D.appareil.marque||''; D.appareil.modele=D.appareil.modele||'';
+  } else {
+    D.appareil.marque='';D.appareil.modele='';D.appareil.masse='';D.grc.dim='';D.grc.vit='';
+  }
+  scheduleSave(); renderNav(); renderView();
+}
+
+/* ---------- SORA (sur le dossier courant) ---------- */
 function summaryBar(R){
   const s=el('div','summary');
-  const box=(v,l,empty)=>{const b=el('div','sumbox');b.appendChild(el('div','v'+(empty?' empty':''),v));b.appendChild(el('div','l',l));return b;};
+  const box=(val,l,empty)=>{const b=el('div','sumbox');b.appendChild(el('div','v'+(empty?' empty':''),val));b.appendChild(el('div','l',l));return b;};
   s.append(
     box(R.valid?String(R.igrc):'—','iGRC',!R.valid),
     box(R.grc!=null?String(R.grc):'—','GRC final',R.grc==null),
@@ -484,47 +621,30 @@ function ynRow(q,obj,key){
   bts.append(by,bn);row.appendChild(bts);
   return row;
 }
-function selRow(label,obj,key,opts){
-  return field(label,obj,key,{type:'select',options:opts,after:()=>renderView()});
-}
+function selR(label,obj,key,opts){ return field(label,obj,key,{type:'select',options:opts,after:()=>renderView()}); }
 
-function viewSora(v){
-  const R=computeSora();
-  v.appendChild(el('h1','page-h','Assistant SORA 2.5'));
-  v.appendChild(el('p','page-sub','iGRC → GRC (risque sol) · ARC (risque air) · SAIL et objectifs OSO. Calcul en direct.'));
-  v.appendChild(summaryBar(R));
+function soraGRC(v,D,R){
+  const g=D.grc;
+  const c=card('Étapes 1 · 2 · 3','Risque au sol — GRC','Dimension/vitesse (issues de l\'appareil) et densité donnent l\'iGRC ; les atténuations M1/M2 donnent le GRC final.');
 
-  const steps=el('div','steps');
-  [['grc','1·2·3 — Risque sol (GRC)'],['arc','4·5·6 — Risque air (ARC)'],['sail','7·10 — SAIL & OSO']].forEach(s=>{
-    const b=el('button',soraStep===s[0]?'on':'',s[1]);
-    b.onclick=()=>{soraStep=s[0];renderView();};
-    steps.appendChild(b);
-  });
-  v.appendChild(steps);
-
-  if(soraStep==='grc') soraGRC(v,R);
-  else if(soraStep==='arc') soraARC(v,R);
-  else soraSAIL(v,R);
-}
-
-function soraGRC(v,R){
-  const g=store.sora.grc;
-  const c=card('Étapes 1 · 2 · 3','Risque au sol — GRC','Dimension/vitesse et densité de population donnent l\'iGRC, puis les atténuations M1/M2 donnent le GRC final.');
+  if(g.dim&&g.vit){
+    const ai=el('div','appinfo');
+    ai.innerHTML='<div class="it">Appareil : <b>'+((D.appareil.marque||'')+' '+(D.appareil.modele||'')).trim()+'</b></div>'+
+      '<div class="it">Dimension : <b>'+g.dim+' m</b></div><div class="it">Vitesse : <b>'+g.vit+' m/s</b></div>'+
+      (D.appareil.masse?'<div class="it">Masse : <b>'+D.appareil.masse+' g</b></div>':'');
+    c.appendChild(ai);
+  } else {
+    c.appendChild(el('div','warn','Renseignez l\'appareil (onglet « Mission & appareil ») pour définir dimension et vitesse.'));
+  }
 
   c.appendChild(el('h3','step','Étape 2 — iGRC initial'));
-  const g1=el('div','grid');
-  g1.append(
-    field('Dimension caractéristique (m)',g,'dim',{after:()=>renderView()}),
-    field('Vitesse max opérationnelle (m/s)',g,'vit',{after:()=>renderView()}),
-  );
-  c.appendChild(g1);
-  c.appendChild(selRow('Densité de population survolée',g,'densite',
+  c.appendChild(selR('Densité de population survolée',g,'densite',
     [['','— choisir —'],...IGRC.rows.map(r=>[r.key,r.label])]));
   const mini=el('label','ynrow');mini.style.cursor='pointer';
   const cb=document.createElement('input');cb.type='checkbox';cb.checked=!!g.mini;
   cb.onchange=()=>{g.mini=cb.checked;scheduleSave();renderView();};
-  const ml=el('div','q','Drone < 250 g ET vitesse ≤ 25 m/s (iGRC = 1, sauf rassemblement — Note 1)');
-  mini.append(ml,cb);c.appendChild(mini);
+  mini.append(el('div','q','Drone < 250 g ET vitesse ≤ 25 m/s (iGRC = 1, sauf rassemblement — Note 1)'),cb);
+  c.appendChild(mini);
 
   if(R.valid){
     const res=el('div','result');
@@ -533,21 +653,21 @@ function soraGRC(v,R){
     d.innerHTML='<div class="kv"><span>Colonne retenue</span><b>'+IGRC.cols[R.ci].dim+' m / '+IGRC.cols[R.ci].spd+' m/s</b></div>'+
                 '<div class="kv"><span>Aire critique</span><b>'+R.crit+' m²</b></div>';
     res.append(b,d);c.appendChild(res);
-    c.appendChild(igrcTable(R));
-  } else {
-    c.appendChild(el('div','note','Renseignez dimension, vitesse et densité pour calculer l\'iGRC.'));
+    c.appendChild(igrcTable(D,R));
+  } else if(g.dim&&g.vit) {
+    c.appendChild(el('div','note','Choisissez la densité de population pour calculer l\'iGRC.'));
   }
 
   c.appendChild(el('h3','step','Étape 3 — Atténuations et GRC final'));
   const g2=el('div','grid');
   g2.append(
-    selRow(MIT.m1a.label,g,'m1a',MIT.m1a.opts.map(o=>[o[0],o[1]])),
-    selRow(MIT.m1b.label,g,'m1b',MIT.m1b.opts.map(o=>[o[0],o[1]])),
-    selRow(MIT.m1c.label,g,'m1c',MIT.m1c.opts.map(o=>[o[0],o[1]])),
-    selRow(MIT.m2.label,g,'m2',MIT.m2.opts.map(o=>[o[0],o[1]])),
+    selR(MIT.m1a.label,g,'m1a',MIT.m1a.opts.map(o=>[o[0],o[1]])),
+    selR(MIT.m1b.label,g,'m1b',MIT.m1b.opts.map(o=>[o[0],o[1]])),
+    selR(MIT.m1c.label,g,'m1c',MIT.m1c.opts.map(o=>[o[0],o[1]])),
+    selR(MIT.m2.label,g,'m2',MIT.m2.opts.map(o=>[o[0],o[1]])),
   );
   c.appendChild(g2);
-  if(R.cumulConflict) c.appendChild(el('div','warn','Attention : M1(A) Moyenne et M1(B) ne se cumulent pas librement dans SORA 2.5. Vérifiez la justification du cumul.'));
+  if(R.cumulConflict) c.appendChild(el('div','warn','M1(A) Moyenne et M1(B) ne se cumulent pas librement dans SORA 2.5. Vérifiez la justification du cumul.'));
   if(R.valid){
     const res=el('div','result');
     const b=el('div');b.innerHTML='<div class="big">'+R.grc+'</div><div class="lbl">GRC final</div>';
@@ -559,32 +679,28 @@ function soraGRC(v,R){
   }
   v.appendChild(c);
 }
-function igrcTable(R){
+function igrcTable(D,R){
   const wrap=el('div');
   const t=document.createElement('table');t.className='sora';
   let head='<tr><th class="rowlbl">Densité \\ colonne</th>';
   IGRC.cols.forEach((c,i)=>head+='<th class="'+(R.ci===i?'hi':'')+'">'+c.dim+' m<br>'+c.spd+' m/s</th>');
   head+='</tr>';
   let body='';
-  IGRC.rows.forEach(r=>{
+  const selRow=IGRC.rows.findIndex(x=>x.key===D.grc.densite);
+  IGRC.rows.forEach((r,ridx)=>{
     body+='<tr><td class="rowlbl">'+r.label+'</td>';
-    r.vals.forEach((val,i)=>{
-      const hi=(IGRC.rows.findIndex(x=>x.key===store.sora.grc.densite)===IGRC.rows.indexOf(r) && R.ci===i);
-      body+='<td class="'+(hi?'hi':'')+'">'+(val==null?'—':val)+'</td>';
-    });
+    r.vals.forEach((val,i)=>{ const hi=(ridx===selRow && R.ci===i); body+='<td class="'+(hi?'hi':'')+'">'+(val==null?'—':val)+'</td>'; });
     body+='</tr>';
   });
-  t.innerHTML=head+body;
-  wrap.appendChild(t);
+  t.innerHTML=head+body;wrap.appendChild(t);
   const cap=el('div','desc','Tableau iGRC — SORA 2.5. La colonne la plus conservatrice (dimension OU vitesse) est retenue.');
   cap.style.marginTop='4px';wrap.appendChild(cap);
   return wrap;
 }
 
-function soraARC(v,R){
-  const a=store.sora.arc;
+function soraARC(v,D,R){
+  const a=D.arc;
   const c=card('Étapes 4 · 5 · 6','Risque air — ARC','Arbre de décision de l\'ARC initial, réduction éventuelle, puis exigence d\'atténuation tactique.');
-
   c.appendChild(el('h3','step','Étape 4 — ARC initial'));
   c.appendChild(ynRow('Espace aérien atypique (ZRT/ZIT, ségrégation, ≤ 30 m sol hors zones d\'aérodrome…) ?',a,'atypical'));
   if(a.atypical!=='yes'){
@@ -628,26 +744,22 @@ function soraARC(v,R){
   v.appendChild(c);
 }
 
-function soraSAIL(v,R){
+function soraSAIL(v,D,R){
   const c=card('Étapes 7 à 10','SAIL & objectifs de sécurité (OSO)','Le SAIL résulte du croisement GRC final × ARC final. Il fixe le niveau de robustesse de chaque OSO.');
   if(R.grc==null || !R.arcResidual){
     c.appendChild(el('div','warn','Complétez les étapes 2-3 (GRC) et 4-5 (ARC) pour obtenir le SAIL.'));
     v.appendChild(c);return;
   }
   const res=el('div','result');
-  const b=el('div');
-  b.innerHTML='<div class="big">'+(R.sail==='CERT'?'CERT':R.sail)+'</div><div class="lbl">SAIL</div>';
+  const b=el('div');b.innerHTML='<div class="big">'+(R.sail==='CERT'?'CERT':R.sail)+'</div><div class="lbl">SAIL</div>';
   const d=el('div');d.style.borderLeft='1px solid #cfe0f6';d.style.paddingLeft='14px';d.style.flex='1';
   d.innerHTML='<div class="kv"><span>GRC final</span><b>'+R.grc+'</b></div><div class="kv"><span>ARC final</span><b>ARC-'+R.arcResidual+'</b></div>';
   res.append(b,d);c.appendChild(res);
-
   if(R.sail==='CERT'){
     c.appendChild(el('div','warn','GRC > 7 : l\'opération relève de la catégorie certifiée (hors périmètre SORA spécifique standard).'));
     v.appendChild(c);return;
   }
-
   c.appendChild(sailTable(R));
-
   c.appendChild(el('h3','step','Objectifs OSO requis pour SAIL '+R.sail));
   const cats={};
   R.osoReq.forEach(o=>{(cats[o.cat]=cats[o.cat]||[]).push(o);});
@@ -657,8 +769,7 @@ function soraSAIL(v,R){
       const it=el('div','osoitem');
       it.appendChild(el('div','id','OSO '+o.id));
       it.appendChild(el('div','t',o.t));
-      const bd=el('div','badge '+REQMAP[o.lvl],REQTXT[o.lvl]);
-      it.appendChild(bd);
+      it.appendChild(el('div','badge '+REQMAP[o.lvl],REQTXT[o.lvl]));
       c.appendChild(it);
     });
   });
@@ -704,28 +815,23 @@ function viewLiens(v){
     a.onclick=e=>{e.preventDefault();openExternal(l.u);};
     list.appendChild(a);
   });
-  c.appendChild(list);
-  v.appendChild(c);
+  c.appendChild(list);v.appendChild(c);
 }
 
-/* ---------- Placeholder ---------- */
 function viewSoon(v){
   const labels={formulaires:'Formulaires (Cerfa, dérogation, AOT)'};
   v.appendChild(el('h1','page-h',labels[current]||'Module'));
   const box=el('div','soon-page');
-  box.innerHTML='<div class="big">🚧</div><b>Module en cours de portage</b><br><span style="font-size:13px">Repris depuis l\'assistant SORA existant dans une prochaine itération. Le référentiel et le SORA l\'alimenteront automatiquement.</span>';
+  box.innerHTML='<div class="big">🚧</div><b>Module en cours de portage</b><br><span style="font-size:13px">Cerfa 15476, dérogation R5-UAS-DEROG et AOT auto-remplis à partir du référentiel et du dossier — prochaine itération.</span>';
   v.appendChild(box);
 }
 
-/* =========================================================
-   DÉMARRAGE / VERROU
-   ========================================================= */
+/* ========== DÉMARRAGE / VERROU ========== */
 const lock=document.getElementById('lock'), appEl=document.getElementById('app');
 const lockTitle=document.getElementById('lockTitle'), lockText=document.getElementById('lockText');
 const pin=document.getElementById('pin'), pin2=document.getElementById('pin2');
 const btnPin=document.getElementById('btnPin'), pinMsg=document.getElementById('pinMsg');
 let pinMode='enter';
-
 function setPinMsg(t,cls){pinMsg.textContent=t;pinMsg.className='msg '+(cls||'');}
 async function bootLock(){
   const has=await invoke('pin_status');
@@ -757,14 +863,12 @@ async function submitPin(){
 async function enterApp(){
   lock.style.display='none';appEl.classList.add('show');
   await loadStore();
-  renderNav();renderView();
-  setSaved('');
+  renderNav();renderView();setSaved('');
 }
 btnPin.addEventListener('click',submitPin);
 pin.addEventListener('keydown',e=>{if(e.key==='Enter'){pinMode==='create'?pin2.focus():submitPin();}});
 pin2.addEventListener('keydown',e=>{if(e.key==='Enter')submitPin();});
 document.getElementById('btnLock').addEventListener('click',()=>{appEl.classList.remove('show');lock.style.display='flex';bootLock();});
-
 bootLock();
 </script>
 </body>
