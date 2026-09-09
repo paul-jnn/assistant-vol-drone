@@ -1472,6 +1472,30 @@ function viewDocs(v){
   const list=el('div'); list.id='docslist'; list.appendChild(el('div','note','Chargement…')); c.appendChild(list);
   v.appendChild(c);
   loadDocsList();
+
+  const sb=card('Sécurité','Sauvegarde des données','Exportez toutes vos données (exploitant, télépilotes, dossiers) dans un fichier, à conserver ou à réimporter sur un autre poste. Les mises à jour de l\'application ne touchent pas vos données.');
+  const sbar=el('div','row-actions');
+  const bx=el('button','btn primary','💾 Exporter mes données'); bx.onclick=exportData;
+  const bi=el('button','btn','📥 Importer des données'); bi.onclick=importData;
+  sbar.append(bx,bi); sb.appendChild(sbar);
+  sb.appendChild(el('div','note','L\'import remplace les données actuelles de ce poste (une confirmation est demandée).'));
+  v.appendChild(sb);
+}
+function exportData(){
+  invoke('data_get').then(async json=>{
+    try{ const p=await invoke('export_file',{subdir:'Sauvegardes',filename:'sauvegarde_'+new Date().toISOString().slice(0,10)+'.json',dataB64:b64FromBytes(new TextEncoder().encode(json))}); openPath(p); setSaved('✓ Sauvegarde exportée'); }
+    catch(e){ alert('Export impossible : '+e); }
+  });
+}
+function importData(){
+  const inp=document.createElement('input'); inp.type='file'; inp.accept='.json,application/json';
+  inp.onchange=async()=>{ const f=inp.files&&inp.files[0]; if(!f)return;
+    let txt; try{ txt=await f.text(); JSON.parse(txt); }catch(e){ alert('Fichier invalide (JSON attendu).'); return; }
+    if(!confirm('Importer ce fichier remplacera les données actuelles de ce poste. Continuer ?'))return;
+    try{ await invoke('data_set',{json:txt}); await loadStore(); current='exploitant'; soraStep='mission'; renderNav(); renderView(); setSaved('✓ Données importées'); }
+    catch(e){ alert('Import impossible : '+e); }
+  };
+  inp.click();
 }
 async function loadDocsList(){
   const list=document.getElementById('docslist'); if(!list)return;
