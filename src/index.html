@@ -174,6 +174,14 @@
   .habrow input{padding:8px 11px;border:1px solid var(--bord);border-radius:9px;font-size:13.5px;font-family:inherit}
   .habrow input[type=date]{flex:0 0 150px}
   .habrow .badge{flex:0 0 auto;min-width:96px}
+  .acc{border:1px solid var(--bord);border-radius:12px;margin-bottom:10px;overflow:hidden;background:#fff}
+  .acc-head{display:flex;align-items:center;gap:11px;padding:13px 16px;cursor:pointer;user-select:none}
+  .acc-head:hover{background:#f7faff}
+  .acc-head .chev{color:var(--gris2);font-size:11px;transition:transform .15s}
+  .acc.open .acc-head .chev{transform:rotate(90deg)}
+  .acc-head .nm{flex:1;font-weight:600;color:var(--texte);font-size:14.5px}
+  .acc-head .reftag{font-size:11px;font-weight:700;color:var(--vert);background:var(--vert-clair);border:1px solid #bfe3cd;border-radius:20px;padding:2px 10px}
+  .acc-body{padding:0 16px 16px;border-top:1px solid var(--bord)}
   .appinfo{display:flex;flex-wrap:wrap;gap:8px 18px;background:#f7faff;border:1px solid #e0eaf7;border-radius:10px;padding:12px 14px;margin-bottom:12px;font-size:13px}
   .appinfo .it b{color:var(--bleu)}
 
@@ -550,24 +558,33 @@ function importLogo(file){
 }
 
 /* ---------- Télépilotes ---------- */
+let pilotOpen={};
 function viewPilotes(v){
   v.appendChild(el('h1','page-h','Télépilotes'));
-  v.appendChild(el('p','page-sub','Fiches enregistrées. Le télépilote « référent » est repris par défaut dans les nouveaux dossiers.'));
+  v.appendChild(el('p','page-sub','Cliquez sur un nom pour déplier sa fiche. Le télépilote « référent » est repris par défaut dans les nouveaux dossiers.'));
   const bar=el('div','row-actions');
   const add=el('button','btn primary','＋ Ajouter un télépilote');
   add.onclick=()=>{
     const id='p'+Date.now();
     store.pilotes.push({id,prenom:'',nom:'',tel:'',mail:'',numTele:'',brevets:'',mentions:[],habilitations:[],notes:''});
     if(!store.referent)store.referent=id;
+    pilotOpen[id]=true;
     scheduleSave();renderView();
   };
   bar.appendChild(add);v.appendChild(bar);
   if(store.pilotes.length===0){ v.appendChild(el('div','note','Aucun télépilote enregistré. Ajoutez-en un pour commencer.')); return; }
   store.pilotes.forEach(p=>{
-    const pc=el('div','pilote');
-    const head=el('div','head');
-    const title=el('h3',null,((p.prenom||'')+' '+(p.nom||'')).trim()||'Nouveau télépilote');
-    const right=el('div','row-actions');right.style.margin='0';
+    const open=!!pilotOpen[p.id];
+    const acc=el('div','acc'+(open?' open':''));
+    const head=el('div','acc-head');
+    const chev=el('span','chev','▶');
+    const nm=el('div','nm',((p.prenom||'')+' '+(p.nom||'')).trim()||'Nouveau télépilote');
+    head.append(chev,nm);
+    if(store.referent===p.id) head.appendChild(el('span','reftag','Référent'));
+    const pc=el('div','acc-body'); pc.hidden=!open;
+    head.onclick=()=>{ const o=!pc.hidden; pc.hidden=o; acc.classList.toggle('open',!o); pilotOpen[p.id]=!o; };
+    acc.appendChild(head);
+    const top=el('div','row-actions');top.style.marginTop='14px';
     const refLab=el('label','refbox'+(store.referent===p.id?' sel':''));
     const radio=document.createElement('input');radio.type='radio';radio.name='ref';radio.checked=store.referent===p.id;
     radio.onchange=()=>{store.referent=p.id;scheduleSave();renderView();};
@@ -577,11 +594,12 @@ function viewPilotes(v){
       if(!confirm('Supprimer ce télépilote ?'))return;
       store.pilotes=store.pilotes.filter(x=>x.id!==p.id);
       if(store.referent===p.id)store.referent=store.pilotes[0]?store.pilotes[0].id:'';
+      delete pilotOpen[p.id];
       scheduleSave();renderView();
     };
-    right.append(refLab,del);head.append(title,right);pc.appendChild(head);
+    top.append(refLab,del);pc.appendChild(top);
     const g=el('div','grid');
-    const upd=()=>{title.textContent=((p.prenom||'')+' '+(p.nom||'')).trim()||'Nouveau télépilote';};
+    const upd=()=>{nm.textContent=((p.prenom||'')+' '+(p.nom||'')).trim()||'Nouveau télépilote';};
     g.append(
       field('Prénom',p,'prenom',{after:upd}),field('Nom',p,'nom',{after:upd}),
       field('Téléphone',p,'tel'),field('Courriel',p,'mail'),
@@ -622,7 +640,8 @@ function viewPilotes(v){
     pc.appendChild(addBar);
 
     pc.appendChild(field('Notes',p,'notes',{type:'textarea',rows:2,full:true}));
-    v.appendChild(pc);
+    acc.appendChild(pc);
+    v.appendChild(acc);
   });
 }
 
