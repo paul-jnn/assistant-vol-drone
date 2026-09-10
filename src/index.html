@@ -182,6 +182,16 @@
   .acc-head .nm{flex:1;font-weight:600;color:var(--texte);font-size:14.5px}
   .acc-head .reftag{font-size:11px;font-weight:700;color:var(--vert);background:var(--vert-clair);border:1px solid #bfe3cd;border-radius:20px;padding:2px 10px}
   .acc-body{padding:0 16px 16px;border-top:1px solid var(--bord)}
+  .card.coll{padding:0;overflow:hidden}
+  .card.coll .coll-head{display:flex;align-items:center;gap:12px;padding:17px 22px;cursor:pointer;user-select:none}
+  .card.coll .coll-head:hover{background:#f7faff}
+  .card.coll .coll-head .chev{color:var(--gris2);font-size:11px;transition:transform .15s}
+  .card.coll.open .coll-head .chev{transform:rotate(90deg)}
+  .card.coll .coll-title{flex:1;min-width:0}
+  .card.coll .coll-title .kick{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--bleu2);margin-bottom:2px}
+  .card.coll .coll-title h2{margin:0;font-size:16px;color:var(--bleu)}
+  .card.coll .coll-body{padding:16px 22px 20px;border-top:1px solid var(--bord)}
+  .card.coll .coll-body .desc{color:var(--gris);font-size:13px;margin:0 0 16px}
   .appinfo{display:flex;flex-wrap:wrap;gap:8px 18px;background:#f7faff;border:1px solid #e0eaf7;border-radius:10px;padding:12px 14px;margin-bottom:12px;font-size:13px}
   .appinfo .it b{color:var(--bleu)}
 
@@ -494,6 +504,24 @@ function card(kick,title,desc){
   if(desc)c.appendChild(el('div','desc',desc));
   return c;
 }
+/* Carte repliable (accordéon de section). Renvoie {card, body} ; on remplit body. */
+let sectionOpen={};
+function collCard(id,kick,title,desc,defOpen){
+  if(sectionOpen[id]===undefined) sectionOpen[id]=(defOpen!==false);
+  const open=sectionOpen[id];
+  const c=el('div','card coll'+(open?' open':''));
+  const head=el('div','coll-head');
+  head.appendChild(el('span','chev','▶'));
+  const tt=el('div','coll-title');
+  if(kick)tt.appendChild(el('div','kick',kick));
+  tt.appendChild(el('h2',null,title));
+  head.appendChild(tt);
+  const body=el('div','coll-body'); body.hidden=!open;
+  if(desc)body.appendChild(el('div','desc',desc));
+  head.onclick=()=>{ const o=!body.hidden; body.hidden=o; c.classList.toggle('open',!o); sectionOpen[id]=!o; };
+  c.append(head,body);
+  return {card:c,body:body};
+}
 function field(label,obj,key,opts){
   opts=opts||{};
   const f=el('div','field'+(opts.full?' full':''));
@@ -523,7 +551,7 @@ function viewExploitant(v){
   v.appendChild(el('h1','page-h','Exploitant'));
   v.appendChild(el('p','page-sub','Renseigné une fois, repris automatiquement dans chaque nouveau dossier de vol.'));
   const e=store.exploitant;
-  const c=card('Référentiel','Identité de l\'exploitant','Ces informations alimenteront le ConOps, les Cerfa et les demandes.');
+  const {card:c,body:cb}=collCard('exp-id','Référentiel','Identité de l\'exploitant','Ces informations alimenteront le ConOps, les Cerfa et les demandes.');
   const g=el('div','grid');
   g.append(
     field('Raison sociale',e,'raison'),field('Forme juridique',e,'forme'),
@@ -533,19 +561,19 @@ function viewExploitant(v){
     field('Code postal',e,'cp'),field('Ville',e,'ville'),
     field('Téléphone',e,'tel'),field('Courriel',e,'mail'),
   );
-  c.appendChild(g);
-  c.appendChild(field('Notes',e,'notes',{type:'textarea',rows:2,full:true}));
+  cb.appendChild(g);
+  cb.appendChild(field('Notes',e,'notes',{type:'textarea',rows:2,full:true}));
   v.appendChild(c);
 
-  const lc=card('Image de marque','Logo','Utilisé en en-tête du MANEX et des rapports de mission. Importé une fois, stocké sur ce poste.');
+  const {card:lc,body:lb}=collCard('exp-logo','Image de marque','Logo','Utilisé en en-tête du MANEX et des rapports de mission. Importé une fois, stocké sur ce poste.',false);
   const lbar=el('div','row-actions');
   const imp=el('button','btn primary','⬆ Importer un logo (PNG/JPG)');
   imp.onclick=()=>{ const inp=document.createElement('input'); inp.type='file'; inp.accept='image/*'; inp.onchange=()=>importLogo(inp.files&&inp.files[0]); inp.click(); };
   lbar.appendChild(imp);
   if(store.logo){ const rm=el('button','btn danger','Retirer le logo'); rm.onclick=()=>{store.logo='';scheduleSave();renderView();}; lbar.appendChild(rm); }
-  lc.appendChild(lbar);
-  if(store.logo){ const img=document.createElement('img'); img.src=store.logo; img.style.cssText='max-height:80px;max-width:260px;border:1px solid var(--bord);border-radius:8px;padding:6px;background:#fff'; lc.appendChild(img); }
-  else lc.appendChild(el('div','note','Aucun logo. Importez le vôtre pour personnaliser vos documents.'));
+  lb.appendChild(lbar);
+  if(store.logo){ const img=document.createElement('img'); img.src=store.logo; img.style.cssText='max-height:80px;max-width:260px;border:1px solid var(--bord);border-radius:8px;padding:6px;background:#fff'; lb.appendChild(img); }
+  else lb.appendChild(el('div','note','Aucun logo. Importez le vôtre pour personnaliser vos documents.'));
   v.appendChild(lc);
 }
 function importLogo(file){
@@ -1624,26 +1652,26 @@ function fmtSize(n){ if(n<1024)return n+' o'; if(n<1048576)return(n/1024).toFixe
 function viewDocs(v){
   v.appendChild(el('h1','page-h','Documents / MANEX'));
   v.appendChild(el('p','page-sub','Importez vos justificatifs (MANEX, attestation d\'assurance, attestations de formation…) pour les consulter et les présenter en cas de contrôle. Stockés localement sur ce poste.'));
-  const c=card('Justificatifs','Vos documents','');
+  const {card:c,body:cb}=collCard('docs-justif','Justificatifs','Vos documents','',true);
   const bar=el('div','row-actions');
   const imp=el('button','btn primary','⬆ Importer un document');
   imp.onclick=()=>{ const inp=document.createElement('input'); inp.type='file'; inp.onchange=()=>importDoc(inp.files&&inp.files[0]); inp.click(); };
-  bar.appendChild(imp); c.appendChild(bar);
-  const list=el('div'); list.id='docslist'; list.appendChild(el('div','note','Chargement…')); c.appendChild(list);
+  bar.appendChild(imp); cb.appendChild(bar);
+  const list=el('div'); list.id='docslist'; list.appendChild(el('div','note','Chargement…')); cb.appendChild(list);
   v.appendChild(c);
   loadDocsList();
 
-  const mc=card('MANEX','Générer une trame de MANEX','Produit un manuel d\'exploitation pré-rempli avec votre référentiel (exploitant, télépilotes, matériel, contacts), suivant le plan standard parties A à E. À relire et adapter : c\'est un point de départ, pas un MANEX validé.');
-  const mbar=el('div','row-actions'); const gm=el('button','btn primary','📘 Générer la trame MANEX'); gm.onclick=genManex; mbar.appendChild(gm); mc.appendChild(mbar);
-  mc.appendChild(el('div','note','Votre MANEX abouti reste votre référence : importez-le ci-dessus pour le garder à portée en contrôle.'));
+  const {card:mc,body:mb}=collCard('docs-manex','MANEX','Générer une trame de MANEX','Produit un manuel d\'exploitation pré-rempli avec votre référentiel (exploitant, télépilotes, matériel, contacts), suivant le plan standard parties A à E. À relire et adapter : c\'est un point de départ, pas un MANEX validé.',false);
+  const mbar=el('div','row-actions'); const gm=el('button','btn primary','📘 Générer la trame MANEX'); gm.onclick=genManex; mbar.appendChild(gm); mb.appendChild(mbar);
+  mb.appendChild(el('div','note','Votre MANEX abouti reste votre référence : importez-le ci-dessus pour le garder à portée en contrôle.'));
   v.appendChild(mc);
 
-  const sb=card('Sécurité','Sauvegarde des données','Exportez toutes vos données (exploitant, télépilotes, dossiers) dans un fichier, à conserver ou à réimporter sur un autre poste. Les mises à jour de l\'application ne touchent pas vos données.');
+  const {card:sb,body:sbd}=collCard('docs-save','Sécurité','Sauvegarde des données','Exportez toutes vos données (exploitant, télépilotes, dossiers) dans un fichier, à conserver ou à réimporter sur un autre poste. Les mises à jour de l\'application ne touchent pas vos données.',false);
   const sbar=el('div','row-actions');
   const bx=el('button','btn primary','💾 Exporter mes données'); bx.onclick=exportData;
   const bi=el('button','btn','📥 Importer des données'); bi.onclick=importData;
-  sbar.append(bx,bi); sb.appendChild(sbar);
-  sb.appendChild(el('div','note','L\'import remplace les données actuelles de ce poste (une confirmation est demandée).'));
+  sbar.append(bx,bi); sbd.appendChild(sbar);
+  sbd.appendChild(el('div','note','L\'import remplace les données actuelles de ce poste (une confirmation est demandée).'));
   v.appendChild(sb);
 }
 // Enregistrement via boîte « Enregistrer sous » native, avec repli sur le dossier Documents.
@@ -1723,8 +1751,8 @@ const MARCHES=[
   {ic:'🏛',t:'PLACE — Achats de l\'État',u:'https://www.marches-publics.gouv.fr/',d:'Plateforme des marchés de l\'État'},
   {ic:'🇪🇺',t:'TED — Union européenne',u:'https://ted.europa.eu/',d:'Marchés publics européens'},
 ];
-function linkCard(kick,title,desc,items){
-  const c=card(kick,title,desc);
+function linkCard(id,kick,title,desc,items,defOpen){
+  const {card:c,body:b}=collCard(id,kick,title,desc,defOpen);
   const list=el('div','linklist');
   items.forEach(l=>{
     const a=el('a');
@@ -1732,14 +1760,14 @@ function linkCard(kick,title,desc,items){
     a.onclick=e=>{e.preventDefault();openExternal(l.u);};
     list.appendChild(a);
   });
-  c.appendChild(list);
+  b.appendChild(list);
   return c;
 }
 function viewLiens(v){
   v.appendChild(el('h1','page-h','Liens & contacts'));
   v.appendChild(el('p','page-sub','Accès rapide aux ressources officielles de préparation de vol et aux appels d\'offres.'));
-  v.appendChild(linkCard('Ressources','Liens utiles','Ouverts dans votre navigateur par défaut.',LIENS));
-  v.appendChild(linkCard('Business','Marchés publics & appels d\'offres','Prestations drone dans la commande publique. Les trois premiers ouvrent directement une liste filtrée « drone ».',MARCHES));
+  v.appendChild(linkCard('liens-utiles','Ressources','Liens utiles','Ouverts dans votre navigateur par défaut.',LIENS,true));
+  v.appendChild(linkCard('liens-marches','Business','Marchés publics & appels d\'offres','Prestations drone dans la commande publique. Les trois premiers ouvrent directement une liste filtrée « drone ».',MARCHES,false));
 }
 
 function viewSoon(v){
