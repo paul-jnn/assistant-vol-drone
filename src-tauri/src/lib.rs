@@ -92,6 +92,14 @@ fn open_file(app: tauri::AppHandle, path: String) -> Result<(), String> {
     app.opener().open_path(path, None::<&str>).map_err(|e| e.to_string())
 }
 
+// Écrit des octets (base64) à un emplacement choisi par l'utilisateur (via boîte « Enregistrer sous »).
+#[tauri::command]
+fn save_bytes(dest: String, data_b64: String) -> Result<(), String> {
+    let data = base64::engine::general_purpose::STANDARD
+        .decode(data_b64.as_bytes()).map_err(|e| format!("base64 invalide : {e}"))?;
+    std::fs::write(&dest, &data).map_err(|e| e.to_string())
+}
+
 #[tauri::command]
 async fn http_get(url: String) -> Result<String, String> {
     if !url.starts_with("https://aviationweather.gov/") {
@@ -190,9 +198,10 @@ pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_updater::Builder::new().build())
+        .plugin(tauri_plugin_dialog::init())
         .invoke_handler(tauri::generate_handler![
             pin_status, set_pin, verify_pin, data_get, data_set,
-            form_template, export_file, open_file, http_get, check_update, apply_update,
+            form_template, export_file, open_file, save_bytes, http_get, check_update, apply_update,
             import_doc, list_docs, doc_path, read_doc, delete_doc, export_doc
         ])
         .run(tauri::generate_context!())

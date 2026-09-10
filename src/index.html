@@ -1627,11 +1627,27 @@ function viewDocs(v){
   sb.appendChild(el('div','note','L\'import remplace les données actuelles de ce poste (une confirmation est demandée).'));
   v.appendChild(sb);
 }
-function exportData(){
-  invoke('data_get').then(async json=>{
-    try{ const p=await invoke('export_file',{subdir:'Sauvegardes',filename:'sauvegarde_'+new Date().toISOString().slice(0,10)+'.json',dataB64:b64FromBytes(new TextEncoder().encode(json))}); openPath(p); setSaved('✓ Sauvegarde exportée'); }
-    catch(e){ alert('Export impossible : '+e); }
-  });
+// Enregistrement via boîte « Enregistrer sous » native, avec repli sur le dossier Documents.
+async function saveAs(defaultName, b64, fallback){
+  const dlg=window.__TAURI__.dialog;
+  if(dlg && dlg.save){
+    let dest=null; try{ dest=await dlg.save({defaultPath:defaultName}); }catch(e){ dest=null; }
+    if(!dest) return;               // annulé par l'utilisateur
+    try{ await invoke('save_bytes',{dest,dataB64:b64}); setSaved('✓ Enregistré'); }
+    catch(e){ alert('Enregistrement impossible : '+e); }
+  } else if(fallback){ await fallback(); }
+}
+async function exportDoc(name){
+  try{
+    const b64=await invoke('read_doc',{filename:name});
+    await saveAs(name, b64, async()=>{ const p=await invoke('export_doc',{filename:name}); openPath(p); setSaved('✓ Exporté (Documents)'); });
+  }catch(e){ alert('Export impossible : '+e); }
+}
+async function exportData(){
+  const json=await invoke('data_get');
+  const b64=b64FromBytes(new TextEncoder().encode(json));
+  const name='sauvegarde_assistant_vol_'+new Date().toISOString().slice(0,10)+'.json';
+  await saveAs(name, b64, async()=>{ const p=await invoke('export_file',{subdir:'Sauvegardes',filename:name,dataB64:b64}); openPath(p); setSaved('✓ Sauvegarde exportée'); });
 }
 function importData(){
   const inp=document.createElement('input'); inp.type='file'; inp.accept='.json,application/json';
@@ -1654,7 +1670,7 @@ async function loadDocsList(){
     const sz=el('span','badge b-grey',fmtSize(d.size));
     const lire=el('button','btn sm primary','Lire'); lire.onclick=()=>viewDoc(d.name);
     const open=el('button','btn sm','Ouvrir'); open.onclick=async()=>{ try{ openPath(await invoke('doc_path',{filename:d.name})); }catch(e){ alert(String(e)); } };
-    const exp=el('button','btn sm','Exporter'); exp.onclick=async()=>{ try{ const p=await invoke('export_doc',{filename:d.name}); openPath(p); setSaved('✓ Exporté'); }catch(e){ alert(String(e)); } };
+    const exp=el('button','btn sm','Exporter'); exp.onclick=()=>exportDoc(d.name);
     const del=el('button','btn danger sm','🗑'); del.onclick=async()=>{ if(!confirm('Supprimer '+d.name+' ?'))return; try{ await invoke('delete_doc',{filename:d.name}); loadDocsList(); }catch(e){ alert(String(e)); } };
     row.append(nm,sz,lire,open,exp,del); list.appendChild(row);
   });
