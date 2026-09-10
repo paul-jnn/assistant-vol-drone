@@ -230,7 +230,57 @@
 <script src="vendor/pdf-lib.min.js"></script>
 <script>
 "use strict";
+/* =============================================================================
+   Assistant Vol Drone — INTERFACE (front-end HTML/CSS/JavaScript)
+   Fichier : src/index.html  —  Éditeur : M.G.I.
+   -----------------------------------------------------------------------------
+   CE QU'EST CE FICHIER
+   Toute l'application visible et toute la logique métier tiennent dans ce SEUL
+   fichier, en JavaScript natif (aucun framework). Le back-end Rust (lib.rs) ne
+   fait que le travail système ; ici on gère les écrans, les données et les calculs.
+
+   SI VOUS AVEZ LES BASES DE PYTHON/CSS, VOICI LES ÉQUIVALENCES UTILES
+     - Le CSS de l'app est tout en haut du fichier, dans <style> (lignes ~15 à 188).
+     - En JS : `const`/`let` = variables ; `function nom(args){...}` = def ;
+       `x => y` = petite fonction anonyme (lambda) ; `obj.cle` = obj["cle"].
+     - `document.createElement(...)` crée un élément HTML par code : c'est comme
+       ça qu'on construit les écrans, au lieu d'écrire du HTML statique.
+
+   LES TROIS PIÈCES À CONNAÎTRE
+     1) `invoke('commande', {args})` : LE PONT vers le Rust. Chaque fois qu'on doit
+        toucher au disque, au réseau ou au système, on appelle une commande Rust
+        par ce moyen (voir la liste des commandes dans lib.rs). `await invoke(...)`
+        attend la réponse.
+     2) `store` : L'ÉTAT COMPLET de l'application (un gros objet). Il contient
+        l'exploitant, les télépilotes, le référent, la liste des dossiers de vol,
+        le logo, etc. Un « dossier » = une mission (intitulé, lieu, dates, appareil,
+        régime, analyse SORA, site/météo, check-list, journal, formulaires).
+        Toute modif à l'écran met à jour `store`, puis `scheduleSave()` l'enregistre
+        (via la commande Rust data_set) après une courte pause.
+     3) `renderView()` : REDESSINE l'écran courant. Sans framework, on efface la
+        zone principale et on la reconstruit à partir de `store`, avec des petits
+        outils : el() (créer un élément), card() (une carte fixe), collCard() (une
+        carte repliable/accordéon), field() (un champ de saisie relié à `store`).
+
+   CARTE DU FICHIER (par plages de lignes indicatives)
+     <style> …………………………………… le CSS (couleurs, cartes, accordéons)
+     RÉFÉRENCES SORA 2.5 ………… tables officielles iGRC / SAIL / OSO
+     BASE DE RÉFÉRENCE DRONES … specs DJI (auto-remplissage)
+     DONNÉES …………………………………… store, normalize(), loadStore(), scheduleSave()
+     MOTEUR SORA ……………………… computeSora() : iGRC→GRC→ARC→SAIL→OSO
+     NAVIGATION / OUTILS DE RENDU  renderNav(), renderView(), el/card/collCard/field
+     puis un bloc par ÉCRAN : Exploitant, Télépilotes, Dossiers, Régime,
+     Conformité (Ouvert/STS/PDRA), Check-list, Journal, Générateurs (dossier PDF,
+     rapport client, MANEX), module SORA, Formulaires, Documents, Liens
+     DÉMARRAGE / VERROU ……………… écran PIN et lancement.
+
+   Le CODE SOURCE COMPLET est public : https://github.com/paul-jnn/assistant-vol-drone
+   ============================================================================= */
+
+// LE PONT vers le Rust. `invoke('nom', {args})` appelle la commande Rust `nom`.
 const invoke = window.__TAURI__.core.invoke;
+
+// Ouvre une URL dans le navigateur par défaut du système (liens externes).
 function openExternal(url){
   try{ if(window.__TAURI__.opener && window.__TAURI__.opener.openUrl){ window.__TAURI__.opener.openUrl(url); return; } }catch(e){}
   invoke('plugin:opener|open_url',{url:url}).catch(()=>{});
@@ -341,8 +391,15 @@ function habStatus(d){
   return {cls:'b-green',txt:'Valide'};
 }
 
-/* ========== DONNÉES ========== */
+/* ========== DONNÉES ==========
+   Les fonctions empty*() décrivent la FORME de chaque objet (ses champs, tous
+   vides au départ). C'est la « structure » des données de l'app. Un dossier de
+   vol regroupe tout ce qui concerne une mission ; le store regroupe tout court. */
+// Modèle vierge d'un exploitant (repris tel quel dans un nouveau store).
 function emptyExploitant(){return {raison:'',forme:'',siret:'',numUAS:'',responsable:'',adresse:'',cp:'',ville:'',tel:'',mail:'',assureur:'',police:'',notes:''};}
+// Modèle vierge d'un DOSSIER (= une mission). `id` unique généré à la création.
+// Regroupe : identité mission, site+météo, régime choisi, appareil, analyse
+// SORA (grc/arc), check-list pré-vol (prevol), journal, réglages formulaires.
 function emptyDossier(){return {
   id:'d'+Date.now()+Math.random().toString(36).slice(2,6),
   titre:'', date:'', lieu:'', notes:'', client:'',
@@ -370,6 +427,11 @@ function normDossier(d){
   if(!Array.isArray(nd.journal))nd.journal=[];
   return nd;
 }
+// normalize() : garantit qu'un store lu depuis le disque a TOUJOURS la forme
+// attendue, même s'il vient d'une ancienne version. Il complète les champs
+// manquants et convertit les anciens formats (ex. mentions/habilitations qui
+// étaient du texte et sont devenues des listes). C'est ce qui rend les mises à
+// jour indolores : les vieux fichiers donnees.json restent lisibles.
 function normalize(raw){
   const s=Object.assign(emptyStore(),raw||{});
   s.exploitant=Object.assign(emptyExploitant(),raw&&raw.exploitant||{});
@@ -403,26 +465,41 @@ let store=emptyStore();
 let saveTimer=null;
 function curDossier(){return store.dossiers.find(d=>d.id===store.currentId)||null;}
 
+// Au démarrage : lit donnees.json (commande Rust data_get) et le normalise.
 async function loadStore(){
   let raw={};
   try{ raw=JSON.parse(await invoke('data_get')||'{}'); }catch(e){ raw={}; }
   store = normalize(raw); // installation neuve = exploitant vierge (aucune donnée personnelle embarquée)
 }
+// Écrit le store sur le disque (commande Rust data_set). `silent` = sans message.
 async function persist(silent){
   try{ await invoke('data_set',{json:JSON.stringify(store)}); if(!silent) setSaved('Enregistré ✓'); }
   catch(e){ setSaved('Erreur d\'enregistrement',true); }
 }
+// Sauvegarde DIFFÉRÉE : appelée à chaque frappe. On attend 450 ms d'inactivité
+// avant d'écrire, pour ne pas enregistrer à chaque caractère (anti-rafale).
 function scheduleSave(){ setSaved('Modification…'); clearTimeout(saveTimer); saveTimer=setTimeout(()=>persist(false),450); }
 function setSaved(t,err){ const el=document.getElementById('saveState'); el.textContent=t; el.style.color=err?'#f6b0b0':'#bcd3f0'; }
 
-/* ========== MOTEUR SORA ========== */
+/* ========== MOTEUR SORA ==========
+   Cœur métier : calcule le niveau de risque d'une opération selon la méthode SORA
+   2.5 (guide DGAC). Enchaînement : risque au sol (iGRC puis GRC) + risque en l'air
+   (ARC) => SAIL (I à VI) => niveau de robustesse exigé pour chaque objectif de
+   sécurité (OSO). Toutes les tables chiffrées sont dans « RÉFÉRENCES SORA 2.5 »
+   plus haut ; ces fonctions ne font que les parcourir. */
+// Choisit la COLONNE iGRC de l'appareil : la plus pénalisante entre sa dimension
+// et sa vitesse (on prend le maximum des deux index).
 function colIndex(dim,vit){
   let ci=0,cv=0;
   for(let i=0;i<IGRC.cols.length;i++){ if(dim<=IGRC.cols[i].dim){ci=i;break;} if(i===IGRC.cols.length-1)ci=i; }
   for(let i=0;i<IGRC.cols.length;i++){ if(vit<=IGRC.cols[i].spd){cv=i;break;} if(i===IGRC.cols.length-1)cv=i; }
   return Math.max(ci,cv);
 }
+// Valeur de réduction d'une atténuation (M1/M2) selon l'option choisie.
 function mitVal(m,key){const o=m.opts.find(x=>x[0]===key);return o?o[2]:0;}
+// ARC INITIAL : classe le risque en l'air (a=faible … d=fort) par un arbre de
+// décision sur l'espace aérien survolé (atypique, >FL600, proche aérodrome,
+// >500 ft, zone urbaine/équipements ADS-B…). Renvoie 'a', 'b', 'c' ou 'd'.
 function computeARC(a){
   if(a.atypical==='yes') return 'a';
   if(a.fl600==='yes') return 'b';
@@ -431,30 +508,35 @@ function computeARC(a){
   if(a.adsb==='yes'||a.eac==='yes'||a.urban==='yes') return 'c';
   return 'b';
 }
+// CALCUL COMPLET pour un dossier D. Renvoie un objet `out` avec iGRC, GRC, ARC,
+// SAIL et la liste des OSO exigés. Les étapes sont commentées à droite.
 function computeSora(D){
   const g=D.grc, a=D.arc;
   const dim=parseFloat(g.dim), vit=parseFloat(g.vit);
   const out={valid:false};
   if(!isNaN(dim)&&!isNaN(vit)&&g.densite){
+    // iGRC = croisement colonne appareil (ci) × ligne densité de population (ri).
     const ci=colIndex(dim,vit), ri=IGRC.rows.findIndex(r=>r.key===g.densite);
     let igrc=IGRC.rows[ri].vals[ci];
-    const mini = g.mini && g.densite!=='dsup';
+    const mini = g.mini && g.densite!=='dsup'; // Note 1 : < 250 g et ≤ 25 m/s => iGRC 1
     if(mini) igrc=1;
     out.ci=ci; out.igrc=igrc; out.crit=IGRC.crit[ci];
+    // Atténuations M1(A/B/C) + M2 : chacune retranche des points au risque au sol.
     let red=mitVal(MIT.m1a,g.m1a)+mitVal(MIT.m1b,g.m1b)+mitVal(MIT.m1c,g.m1c)+mitVal(MIT.m2,g.m2);
-    const floor=IGRC.rows[0].vals[ci];
+    const floor=IGRC.rows[0].vals[ci]; // plancher : le GRC ne peut pas descendre sous ce seuil
     out.reduction=red; out.floor=floor;
-    out.grc = igrc!=null ? Math.max(igrc+red,floor) : null;
-    out.cumulConflict = (g.m1a==='med' && g.m1b!=='none');
+    out.grc = igrc!=null ? Math.max(igrc+red,floor) : null; // GRC final (jamais < plancher)
+    out.cumulConflict = (g.m1a==='med' && g.m1b!=='none');  // combinaison d'atténuations non cumulable
     out.valid = igrc!=null;
   }
-  out.arcInitial=computeARC(a);
-  out.arcResidual=a.residual||out.arcInitial;
+  out.arcInitial=computeARC(a);               // risque air initial
+  out.arcResidual=a.residual||out.arcInitial; // ARC final si une réduction est justifiée
   if(out.grc!=null && out.arcResidual){
-    if(out.grc>7) out.sail='CERT';
-    else{ const gc=Math.max(2,Math.min(7,out.grc)); const ai={a:0,b:1,c:2,d:3}[out.arcResidual]; out.sail=SAILT[gc][ai]; }
+    if(out.grc>7) out.sail='CERT';            // GRC > 7 => bascule en catégorie certifiée
+    else{ const gc=Math.max(2,Math.min(7,out.grc)); const ai={a:0,b:1,c:2,d:3}[out.arcResidual]; out.sail=SAILT[gc][ai]; } // SAIL = table GRC × ARC
   }
   if(out.sail && out.sail!=='CERT'){
+    // Pour ce SAIL, on liste chaque OSO avec le niveau de robustesse exigé.
     const si=['I','II','III','IV','V','VI'].indexOf(out.sail);
     out.sailIdx=si; out.osoReq=OSO.map(o=>({id:o.id,cat:o.cat,t:o.t,lvl:o.r[si]}));
   }
@@ -944,7 +1026,13 @@ function applyModel(D){
   scheduleSave(); renderNav(); renderView();
 }
 
-/* ---------- Régime : recommandation ---------- */
+/* ---------- Régime : recommandation ----------
+   À partir des infos de base d'un dossier (classe C du drone, vol en vue VLOS ou
+   hors vue BVLOS, hauteur, environnement, distance aux tiers, masse), propose le
+   CADRE RÉGLEMENTAIRE le plus adapté : catégorie ouverte (A1/A2/A3), STS, PDRA ou
+   SORA. Renvoie {regime, sous-catégorie, justification, message si info manquante}.
+   C'est une aide au dégrossissage : le choix final reste à l'utilisateur, et les
+   conditions exactes du régime officiel priment. */
 function recommendRegime(D){
   const c=D.classeC, bvlos=(D.typeVol==='BVLOS'), h=parseFloat(D.hauteurMax)||0, env=D.environnement, dist=D.distanceTiers;
   const m=parseFloat(D.appareil.masse)||0;
@@ -1751,6 +1839,12 @@ const MARCHES=[
   {ic:'🏛',t:'PLACE — Achats de l\'État',u:'https://www.marches-publics.gouv.fr/',d:'Plateforme des marchés de l\'État'},
   {ic:'🇪🇺',t:'TED — Union européenne',u:'https://ted.europa.eu/',d:'Marchés publics européens'},
 ];
+// Code source public de l'application (dépôt GitHub) + documentation.
+const SOURCE=[
+  {ic:'💻',t:'Code source (GitHub)',u:'https://github.com/paul-jnn/assistant-vol-drone',d:'Dépôt public : tout le code de l\'application'},
+  {ic:'📦',t:'Versions & installateurs',u:'https://github.com/paul-jnn/assistant-vol-drone/releases',d:'Télécharger une version (Windows / Linux)'},
+  {ic:'📖',t:'Dossier technique',u:'https://github.com/paul-jnn/assistant-vol-drone/blob/main/docs/DOSSIER_TECHNIQUE.md',d:'Documentation complète du fonctionnement'},
+];
 function linkCard(id,kick,title,desc,items,defOpen){
   const {card:c,body:b}=collCard(id,kick,title,desc,defOpen);
   const list=el('div','linklist');
@@ -1768,6 +1862,7 @@ function viewLiens(v){
   v.appendChild(el('p','page-sub','Accès rapide aux ressources officielles de préparation de vol et aux appels d\'offres.'));
   v.appendChild(linkCard('liens-utiles','Ressources','Liens utiles','Ouverts dans votre navigateur par défaut.',LIENS,true));
   v.appendChild(linkCard('liens-marches','Business','Marchés publics & appels d\'offres','Prestations drone dans la commande publique. Les trois premiers ouvrent directement une liste filtrée « drone ».',MARCHES,false));
+  v.appendChild(linkCard('liens-source','Application','Code source & documentation','L\'application est libre et ouverte : son code complet et sa documentation sont publics.',SOURCE,false));
 }
 
 function viewSoon(v){
