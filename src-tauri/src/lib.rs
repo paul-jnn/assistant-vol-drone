@@ -85,7 +85,13 @@ fn export_file(app: tauri::AppHandle, subdir: String, filename: String, data_b64
     Ok(path.to_string_lossy().to_string())
 }
 
-// Requête HTTP GET restreinte (météo aviationweather.gov). Renvoie le corps texte.
+// Ouvre un fichier avec l'application par défaut du système (non restreint à un dossier).
+#[tauri::command]
+fn open_file(app: tauri::AppHandle, path: String) -> Result<(), String> {
+    use tauri_plugin_opener::OpenerExt;
+    app.opener().open_path(path, None::<&str>).map_err(|e| e.to_string())
+}
+
 #[tauri::command]
 async fn http_get(url: String) -> Result<String, String> {
     if !url.starts_with("https://aviationweather.gov/") {
@@ -98,7 +104,6 @@ async fn http_get(url: String) -> Result<String, String> {
     resp.text().await.map_err(|e| e.to_string())
 }
 
-// Vérifie s'il existe une mise à jour ; renvoie la version, ou None (silencieux si indisponible).
 #[tauri::command]
 async fn check_update(app: tauri::AppHandle) -> Result<Option<String>, String> {
     use tauri_plugin_updater::UpdaterExt;
@@ -110,7 +115,6 @@ async fn check_update(app: tauri::AppHandle) -> Result<Option<String>, String> {
     }
 }
 
-// Télécharge et installe la mise à jour, puis redémarre l'application.
 #[tauri::command]
 async fn apply_update(app: tauri::AppHandle) -> Result<(), String> {
     use tauri_plugin_updater::UpdaterExt;
@@ -121,7 +125,6 @@ async fn apply_update(app: tauri::AppHandle) -> Result<(), String> {
     }
     Ok(())
 }
-
 
 fn docs_dir(app: &tauri::AppHandle) -> std::path::PathBuf {
     let d = config_dir(app).join("documents");
@@ -149,7 +152,7 @@ fn list_docs(app: tauri::AppHandle) -> Vec<serde_json::Value> {
             }
         }
     }
-    out.sort_by(|a,b| a["name"].as_str().unwrap_or("").cmp(b["name"].as_str().unwrap_or("")));
+    out.sort_by(|a, b| a["name"].as_str().unwrap_or("").cmp(b["name"].as_str().unwrap_or("")));
     out
 }
 
@@ -157,6 +160,14 @@ fn list_docs(app: tauri::AppHandle) -> Vec<serde_json::Value> {
 fn doc_path(app: tauri::AppHandle, filename: String) -> Result<String, String> {
     let p = docs_dir(&app).join(sanitize(&filename));
     if p.exists() { Ok(p.to_string_lossy().to_string()) } else { Err("introuvable".into()) }
+}
+
+// Renvoie le contenu d'un document importé en base64 (pour lecture dans l'application).
+#[tauri::command]
+fn read_doc(app: tauri::AppHandle, filename: String) -> Result<String, String> {
+    let p = docs_dir(&app).join(sanitize(&filename));
+    let data = std::fs::read(&p).map_err(|e| e.to_string())?;
+    Ok(base64::engine::general_purpose::STANDARD.encode(data))
 }
 
 #[tauri::command]
@@ -181,8 +192,8 @@ pub fn run() {
         .plugin(tauri_plugin_updater::Builder::new().build())
         .invoke_handler(tauri::generate_handler![
             pin_status, set_pin, verify_pin, data_get, data_set,
-            form_template, export_file, http_get, check_update, apply_update,
-            import_doc, list_docs, doc_path, delete_doc, export_doc
+            form_template, export_file, open_file, http_get, check_update, apply_update,
+            import_doc, list_docs, doc_path, read_doc, delete_doc, export_doc
         ])
         .run(tauri::generate_context!())
         .expect("erreur au lancement de l'application Tauri");
